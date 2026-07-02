@@ -272,6 +272,7 @@
       <button class="btn ghost" onclick="openVorlageLaden()">Vorlage laden</button>
       <button class="btn primary" onclick="teileZuBestellungUebernehmen()">In Bestellung übernehmen</button>
     </div>
+    <button class="btn ghost full" style="margin-top:10px;" onclick="teileZuExternUebernehmen()">🎨 In Extern-Auftrag übernehmen</button>
     <button class="btn ghost full" style="margin-top:10px;" onclick="druckeTeileliste()">🖨️ Teileliste drucken / PDF</button>
 
     <div class="sectionLabel" style="margin-top:26px;">Notizen</div>
@@ -280,8 +281,13 @@
 
   <!-- VIEW: Bestellungen -->
   <div class="view" id="view-bestellungen">
-    <h2 class="viewTitle">Bestellaufträge</h2>
+    <h2 class="viewTitle">Aufträge</h2>
+    <div class="statusStrip" style="margin-bottom:16px;">
+      <div class="statusChip current" id="tabBestellungen" onclick="switchAuftragTab('bestellung')">Bestellungen</div>
+      <div class="statusChip" id="tabExtern" onclick="switchAuftragTab('extern')">Extern (Beschichten/Galvanik)</div>
+    </div>
     <div id="bestellListe"></div>
+    <div id="externListe" style="display:none;"></div>
   </div>
 
   <!-- VIEW: Bestell-Detail -->
@@ -294,6 +300,18 @@
     <div class="sectionLabel">Positionen — Wareneingang abhaken</div>
     <div id="bestellPositionen"></div>
     <button class="btn primary full" style="margin-top:16px;" onclick="bestellungAbschliessen()">Als komplett markieren</button>
+  </div>
+
+  <!-- VIEW: Extern-Auftrag-Detail -->
+  <div class="view" id="view-externDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="goTo('bestellungen')">←</div>
+      <div class="detailTitle" id="externDetailTitle">Extern-Auftrag</div>
+    </div>
+    <div class="card" id="externInfoCard"></div>
+    <div class="sectionLabel">Teile — Rückgabe abhaken</div>
+    <div id="externPositionen"></div>
+    <button class="btn primary full" style="margin-top:16px;" onclick="externAuftragAbschliessen()">Als fertig markieren</button>
   </div>
 
   <!-- VIEW: Vorlagen -->
@@ -451,6 +469,30 @@
     <div class="btnRow">
       <button class="btn ghost" onclick="closeModal('modalBestellName')">Abbrechen</button>
       <button class="btn primary" onclick="confirmBestellungAnlegen()">Übernehmen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Extern-Auftrag benennen -->
+<div class="modalBg" id="modalExternName">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Extern-Auftrag anlegen</div>
+    <label>Bezeichnung</label>
+    <input type="text" id="inpExternName" placeholder="z.B. Pulverbeschichten KW27">
+    <label>Art</label>
+    <select id="inpExternArt">
+      <option>Pulverbeschichten</option>
+      <option>Galvanik / Verzinken</option>
+      <option>Verchromen</option>
+      <option>Sandstrahlen</option>
+      <option>Sonstiges</option>
+    </select>
+    <label>Dienstleister (optional)</label>
+    <input type="text" id="inpExternDienstleister" placeholder="Firma">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalExternName')">Abbrechen</button>
+      <button class="btn primary" onclick="confirmExternAuftragAnlegen()">Übernehmen</button>
     </div>
   </div>
 </div>
@@ -745,20 +787,46 @@ function renderPhotoBox(bg){
 function triggerPhoto(){
   document.getElementById("photoInput").click();
 }
+// ============ BILD-KOMPRIMIERUNG ============
+// Verkleinert/komprimiert Bilder vor dem Speichern, damit Fotomediathek-Bilder
+// (oft mehrere MB, hohe Auflösung) nicht am Request-Limit von Supabase scheitern.
+function komprimiereBild(file, callback){
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var img = new Image();
+    img.onload = function(){
+      var maxDim = 1600;
+      var w = img.width, h = img.height;
+      if(w > maxDim || h > maxDim){
+        if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
+        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      }
+      var canvas = document.createElement("canvas");
+      canvas.width = w; canvas.height = h;
+      var ctx = canvas.getContext("2d");
+      ctx.drawImage(img, 0, 0, w, h);
+      var dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      callback(dataUrl);
+    };
+    img.onerror = function(){ callback(ev.target.result); };
+    img.src = ev.target.result;
+  };
+  reader.onerror = function(){ toast("Bild konnte nicht gelesen werden", "err"); };
+  reader.readAsDataURL(file);
+}
+
 function onPhotoSelected(e){
   var file = e.target.files[0];
   if(!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev){
-    var dataUrl = ev.target.result;
+  document.getElementById("photoBox").innerHTML = '<div class="icon">⏳</div><div class="hint">Bild wird verarbeitet...</div>';
+  komprimiereBild(file, function(dataUrl){
     document.getElementById("photoBox").innerHTML = '<img src="' + dataUrl + '">';
-    // Foto lokal als data URL speichern (kein Storage-Upload noetig für Iteration 1)
-    sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {foto_url: dataUrl}).then(function(){
+    sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {foto_url: dataUrl}).then(function(res){
+      if(!res){ toast("Speichern fehlgeschlagen", "err"); renderPhotoBox(state.aktiveBaugruppe); return; }
       state.aktiveBaugruppe.foto_url = dataUrl;
       analysiereFoto(dataUrl);
     });
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 function renderKiBox(bg){
@@ -792,11 +860,12 @@ function handleInstRefPhotoClick(){
 function onInstRefPhotoSelected(e){
   var file = e.target.files[0];
   if(!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev){
-    var dataUrl = ev.target.result;
+  var box = document.getElementById("instRefPhotoBox");
+  box.innerHTML = '<div class="icon">⏳</div><div class="hint">Bild wird verarbeitet...</div>';
+  komprimiereBild(file, function(dataUrl){
     var bg = state.aktiveBaugruppe;
-    sbPatch("bg_instanzen", "id=eq." + bg.id, {referenzbild_url: dataUrl}).then(function(){
+    sbPatch("bg_instanzen", "id=eq." + bg.id, {referenzbild_url: dataUrl}).then(function(res){
+      if(!res){ toast("Speichern fehlgeschlagen — Bild evtl. zu groß", "err"); renderInstRefPhotoBox(bg); return; }
       bg.referenzbild_url = dataUrl;
       renderInstRefPhotoBox(bg);
       toast("Referenzbild gespeichert", "ok");
@@ -813,8 +882,7 @@ function onInstRefPhotoSelected(e){
         });
       }
     });
-  };
-  reader.readAsDataURL(file);
+  });
 }
 
 function analysiereFoto(dataUrl){
@@ -952,27 +1020,66 @@ function renderTeileListe(rows){
   rows.forEach(function(t){
     var row = document.createElement("div");
     row.className = "teilItem";
+    row.style.flexWrap = "wrap";
+    var zeigtMassnahme = (t.zustand === "verschlissen" || t.zustand === "defekt");
+    var massnahmeLabel = {bestellen:"Neu bestellen", intern:"Intern überarbeiten", extern:"Extern (Beschichten/Galvanik)"};
     row.innerHTML =
       '<div class="teilMain">' +
-        '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + (t.menge && t.menge > 1 ? ' <span style="color:var(--accent); font-weight:700; font-size:12px;">×' + t.menge + '</span>' : '') + '</div>' +
+        '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + '</div>' +
         (t.bestellnummer ? '<div class="teilHint">Bestell-Nr: ' + escapeHtml(t.bestellnummer) + (t.hinweis ? ' · ' + escapeHtml(t.hinweis) : '') + '</div>' : (t.hinweis ? '<div class="teilHint">' + escapeHtml(t.hinweis) + '</div>' : '')) +
       '</div>' +
+      '<input type="number" min="1" class="mengeInlineInput" data-teil-id="' + t.id + '" value="' + (t.menge || 1) + '" style="width:44px; text-align:center; padding:6px 4px; font-size:13px; border-radius:8px; background:var(--bg-elevated); border:1px solid var(--line); color:var(--text); margin-right:6px;">' +
       '<div class="zustandPicker">' +
         '<div class="zBtn ok ' + (t.zustand==='ok'?'active':'') + '" data-z="ok">✓</div>' +
         '<div class="zBtn verschlissen ' + (t.zustand==='verschlissen'?'active':'') + '" data-z="verschlissen">△</div>' +
         '<div class="zBtn defekt ' + (t.zustand==='defekt'?'active':'') + '" data-z="defekt">✕</div>' +
-      '</div>';
+      '</div>' +
+      (zeigtMassnahme ? (
+        '<div style="width:100%; display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' +
+          ['bestellen','intern','extern'].map(function(m){
+            return '<div class="statusChip massnahmeChip' + (t.massnahme===m ? ' current' : '') + '" data-m="' + m + '" style="font-size:10.5px; padding:5px 10px; cursor:pointer;">' + massnahmeLabel[m] + '</div>';
+          }).join('') +
+        '</div>'
+      ) : '');
     row.querySelectorAll(".zBtn").forEach(function(btn){
       btn.onclick = function(){ setTeilZustand(t.id, btn.getAttribute("data-z")); };
+    });
+    row.querySelectorAll(".massnahmeChip").forEach(function(chip){
+      chip.onclick = function(){ setTeilMassnahme(t.id, chip.getAttribute("data-m")); };
+    });
+    var mengeInp = row.querySelector(".mengeInlineInput");
+    mengeInp.addEventListener("blur", function(){
+      var neu = parseInt(mengeInp.value, 10) || 1;
+      sbPatch("bg_instanz_teile", "id=eq." + t.id, {menge: neu}).then(function(){
+        var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+        arr.forEach(function(r){ if(r.id === t.id) r.menge = neu; });
+      });
     });
     card.appendChild(row);
   });
 }
 function setTeilZustand(teilId, zustand){
-  var bestellen = (zustand === "verschlissen" || zustand === "defekt");
-  sbPatch("bg_instanz_teile", "id=eq." + teilId, {zustand: zustand, bestellen: bestellen}).then(function(){
-    var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
-    rows.forEach(function(r){ if(r.id === teilId){ r.zustand = zustand; r.bestellen = bestellen; } });
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  var teil = rows.filter(function(r){ return r.id === teilId; })[0];
+  var body = {zustand: zustand};
+  // Bei Wechsel zu ok: Maßnahme zurücksetzen. Bei verschlissen/defekt ohne bisherige Maßnahme: Default "bestellen"
+  if(zustand === "ok"){
+    body.massnahme = null; body.bestellen = false; body.externauftrag_id = null;
+  } else if(!teil.massnahme){
+    body.massnahme = "bestellen"; body.bestellen = true;
+  }
+  sbPatch("bg_instanz_teile", "id=eq." + teilId, body).then(function(){
+    Object.keys(body).forEach(function(k){ teil[k] = body[k]; });
+    renderTeileListe(rows);
+    updateHeaderStats();
+  });
+}
+function setTeilMassnahme(teilId, massnahme){
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  var teil = rows.filter(function(r){ return r.id === teilId; })[0];
+  var bestellen = (massnahme === "bestellen");
+  sbPatch("bg_instanz_teile", "id=eq." + teilId, {massnahme: massnahme, bestellen: bestellen}).then(function(){
+    teil.massnahme = massnahme; teil.bestellen = bestellen;
     renderTeileListe(rows);
     updateHeaderStats();
   });
@@ -1138,8 +1245,8 @@ function renderBestellPositionen(rows){
     el.innerHTML =
       '<div class="orderTeil" style="border:none; padding:0;">' +
         '<div>' +
-          '<div class="teilName">' + escapeHtml(t.bezeichnung) + '</div>' +
-          '<div class="teilHint">' + escapeHtml(bgInfo) + (t.zustand ? ' · ' + t.zustand : '') + '</div>' +
+          '<div class="teilName">' + escapeHtml(t.bezeichnung) + (t.menge && t.menge > 1 ? ' <span style="color:var(--accent); font-weight:700; font-size:12px;">× ' + t.menge + '</span>' : '') + '</div>' +
+          '<div class="teilHint">' + escapeHtml(bgInfo) + (t.zustand ? ' · ' + t.zustand : '') + (t.bestellnummer ? ' · Nr. ' + escapeHtml(t.bestellnummer) : '') + '</div>' +
         '</div>' +
         '<div class="otWe ' + (t.wareneingang ? 'on' : '') + '" data-id="' + t.id + '">✓</div>' +
       '</div>';
@@ -1161,6 +1268,130 @@ function bestellungAbschliessen(){
     document.getElementById("bestellInfoCard").innerHTML =
       '<div class="fzMeta">' + (state.aktiveBestellung.lieferant || 'Kein Lieferant hinterlegt') + '</div>' +
       '<div style="margin-top:6px;"><span class="badge abgeschlossen">komplett</span></div>';
+  });
+}
+
+// ============ AUFTRAGS-TABS (Bestellung / Extern) ============
+function switchAuftragTab(tab){
+  document.getElementById("tabBestellungen").classList.toggle("current", tab === "bestellung");
+  document.getElementById("tabExtern").classList.toggle("current", tab === "extern");
+  document.getElementById("bestellListe").style.display = (tab === "bestellung") ? "block" : "none";
+  document.getElementById("externListe").style.display = (tab === "extern") ? "block" : "none";
+  if(tab === "extern") loadExternAuftraege();
+}
+
+// ============ EXTERN-AUFTRÄGE (Pulverbeschichten, Galvanik, etc.) ============
+function teileZuExternUebernehmen(){
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  var zuExtern = rows.filter(function(r){ return r.massnahme === "extern" && !r.externauftrag_id; });
+  if(!zuExtern.length){
+    toast("Keine Teile mit Maßnahme 'Extern' markiert", "err");
+    return;
+  }
+  state.pendingExternTeile = zuExtern;
+  document.getElementById("inpExternName").value = state.aktivesFahrzeug.modell + " · " + state.aktiveBaugruppe.baugruppen_typ;
+  document.getElementById("inpExternDienstleister").value = "";
+  openModal("modalExternName");
+}
+function confirmExternAuftragAnlegen(){
+  var name = document.getElementById("inpExternName").value.trim();
+  var art = document.getElementById("inpExternArt").value;
+  var dienstleister = document.getElementById("inpExternDienstleister").value.trim();
+  sbPost("bg_externauftraege", {bezeichnung: name, art: art, dienstleister: dienstleister, status: "offen"}, true).then(function(res){
+    var auftragId = res[0].id;
+    var ids = state.pendingExternTeile.map(function(t){ return t.id; });
+    var updates = ids.map(function(id){
+      return sbPatch("bg_instanz_teile", "id=eq." + id, {externauftrag_id: auftragId});
+    });
+    Promise.all(updates).then(function(){
+      closeModal("modalExternName");
+      toast("Extern-Auftrag angelegt", "ok");
+      loadInstanzTeile(state.aktiveBaugruppe.id);
+      updateHeaderStats();
+    });
+  });
+}
+function loadExternAuftraege(){
+  sbGet("bg_externauftraege?select=*&order=created_at.desc").then(function(rows){
+    state.externauftraege = rows || [];
+    renderExternListe();
+  });
+}
+function renderExternListe(){
+  var wrap = document.getElementById("externListe");
+  if(!state.externauftraege || !state.externauftraege.length){
+    wrap.innerHTML = '<div class="emptyState"><div class="icon">🎨</div><p>Noch keine Extern-Aufträge.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  state.externauftraege.forEach(function(ex){
+    var el = document.createElement("div");
+    el.className = "card tap";
+    el.onclick = function(){ openExternDetail(ex); };
+    el.innerHTML =
+      '<div class="fzCard">' +
+        '<div class="fzMain">' +
+          '<div class="fzTitle">' + escapeHtml(ex.bezeichnung || "Extern-Auftrag") + '</div>' +
+          '<div class="fzMeta">' + escapeHtml(ex.art || '') + (ex.dienstleister ? ' · ' + escapeHtml(ex.dienstleister) : '') + '</div>' +
+        '</div>' +
+        '<span class="badge ' + (ex.status === 'fertig' ? 'abgeschlossen' : 'aktiv') + '">' + ex.status + '</span>' +
+      '</div>';
+    wrap.appendChild(el);
+  });
+}
+function openExternDetail(ex){
+  state.aktiverExternAuftrag = ex;
+  document.getElementById("externDetailTitle").textContent = ex.bezeichnung || "Extern-Auftrag";
+  document.getElementById("externInfoCard").innerHTML =
+    '<div class="fzMeta">' + escapeHtml(ex.art || '') + (ex.dienstleister ? ' · ' + escapeHtml(ex.dienstleister) : '') + '</div>' +
+    '<div style="margin-top:6px;"><span class="badge aktiv">' + ex.status + '</span></div>';
+  showView("view-externDetail");
+  loadExternPositionen(ex.id);
+}
+function loadExternPositionen(auftragId){
+  sbGet("bg_instanz_teile?select=*,bg_instanzen(baugruppen_typ,fahrzeug_id)&externauftrag_id=eq." + auftragId).then(function(rows){
+    renderExternPositionen(rows || []);
+  });
+}
+function renderExternPositionen(rows){
+  var wrap = document.getElementById("externPositionen");
+  if(!rows.length){
+    wrap.innerHTML = '<div class="emptyState"><p>Keine Positionen.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  rows.forEach(function(t){
+    var el = document.createElement("div");
+    el.className = "card";
+    el.style.padding = "12px 14px";
+    el.style.marginBottom = "8px";
+    var bgInfo = t.bg_instanzen ? t.bg_instanzen.baugruppen_typ : "";
+    el.innerHTML =
+      '<div class="orderTeil" style="border:none; padding:0;">' +
+        '<div>' +
+          '<div class="teilName">' + escapeHtml(t.bezeichnung) + (t.menge && t.menge > 1 ? ' <span style="color:var(--accent); font-weight:700; font-size:12px;">× ' + t.menge + '</span>' : '') + '</div>' +
+          '<div class="teilHint">' + escapeHtml(bgInfo) + '</div>' +
+        '</div>' +
+        '<div class="otWe ' + (t.rueckgabe ? 'on' : '') + '" data-id="' + t.id + '">✓</div>' +
+      '</div>';
+    el.querySelector(".otWe").onclick = function(){
+      toggleRueckgabe(t.id, !t.rueckgabe);
+    };
+    wrap.appendChild(el);
+  });
+}
+function toggleRueckgabe(teilId, neu){
+  sbPatch("bg_instanz_teile", "id=eq." + teilId, {rueckgabe: neu}).then(function(){
+    loadExternPositionen(state.aktiverExternAuftrag.id);
+  });
+}
+function externAuftragAbschliessen(){
+  sbPatch("bg_externauftraege", "id=eq." + state.aktiverExternAuftrag.id, {status: "fertig"}).then(function(){
+    toast("Extern-Auftrag abgeschlossen", "ok");
+    state.aktiverExternAuftrag.status = "fertig";
+    document.getElementById("externInfoCard").innerHTML =
+      '<div class="fzMeta">' + escapeHtml(state.aktiverExternAuftrag.art || '') + (state.aktiverExternAuftrag.dienstleister ? ' · ' + escapeHtml(state.aktiverExternAuftrag.dienstleister) : '') + '</div>' +
+      '<div style="margin-top:6px;"><span class="badge abgeschlossen">fertig</span></div>';
   });
 }
 
@@ -1245,18 +1476,18 @@ function handleRefPhotoBoxClick(){
 function onRefPhotoSelected(e){
   var file = e.target.files[0];
   if(!file) return;
-  var reader = new FileReader();
-  reader.onload = function(ev){
-    var dataUrl = ev.target.result;
-    sbPatch("bg_vorlagen", "id=eq." + state.aktiveVorlage.id, {referenzbild_url: dataUrl}).then(function(){
+  var box = document.getElementById("refPhotoBox");
+  box.innerHTML = '<div class="icon">⏳</div><div class="hint">Bild wird verarbeitet...</div>';
+  komprimiereBild(file, function(dataUrl){
+    sbPatch("bg_vorlagen", "id=eq." + state.aktiveVorlage.id, {referenzbild_url: dataUrl}).then(function(res){
+      if(!res){ toast("Speichern fehlgeschlagen — Bild evtl. zu groß", "err"); renderRefPhotoBox(state.aktiveVorlage); return; }
       state.aktiveVorlage.referenzbild_url = dataUrl;
       renderRefPhotoBox(state.aktiveVorlage);
       toast("Referenzbild gespeichert", "ok");
       var idx = state.vorlagen.findIndex(function(x){ return x.id === state.aktiveVorlage.id; });
       if(idx > -1) state.vorlagen[idx].referenzbild_url = dataUrl;
     });
-  };
-  reader.readAsDataURL(file);
+  });
 }
 function openZoom(url){
   document.getElementById("zoomImg").src = url;
