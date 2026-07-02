@@ -300,6 +300,7 @@
     <div class="sectionLabel">Positionen — Wareneingang abhaken</div>
     <div id="bestellPositionen"></div>
     <button class="btn primary full" style="margin-top:16px;" onclick="bestellungAbschliessen()">Als komplett markieren</button>
+    <button class="btn ghost full" style="margin-top:10px;" onclick="druckeBestellung()">🖨️ Bestellliste drucken / PDF</button>
   </div>
 
   <!-- VIEW: Extern-Auftrag-Detail -->
@@ -312,6 +313,7 @@
     <div class="sectionLabel">Teile — Rückgabe abhaken</div>
     <div id="externPositionen"></div>
     <button class="btn primary full" style="margin-top:16px;" onclick="externAuftragAbschliessen()">Als fertig markieren</button>
+    <button class="btn ghost full" style="margin-top:10px;" onclick="druckeExternAuftrag()">🖨️ Auftragsliste drucken / PDF</button>
   </div>
 
   <!-- VIEW: Vorlagen -->
@@ -1608,17 +1610,10 @@ function escapeAttr(s){
 
 // ============ NOTIZEN ============
 // ============ DRUCK / PDF ============
-function druckeTeileliste(){
-  var bg = state.aktiveBaugruppe;
-  var fz = state.aktivesFahrzeug;
-  var rows = state.instanzTeileCache[bg.id] || [];
-  if(!rows.length){ toast("Keine Teile zum Drucken", "err"); return; }
-
-  var sorted = sortByTeilenummer(rows);
-  var zustandLabel = {ok:"OK", verschlissen:"Verschleiß", defekt:"Defekt", offen:"—"};
-
+function oeffnePrintFenster(titel, meta, rows, spalten){
+  // spalten: Array von {label, get: function(row){return string}}
   var html = '<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">' +
-    '<title>Teileliste ' + escapeHtml(bg.baugruppen_typ) + '</title>' +
+    '<title>' + escapeHtml(titel) + '</title>' +
     '<style>' +
     'body{font-family:-apple-system,Arial,sans-serif; padding:24px; color:#111;}' +
     'h1{font-size:18px; margin-bottom:2px;}' +
@@ -1633,19 +1628,12 @@ function druckeTeileliste(){
     '.zustand-ok{color:#2a8a4a;}' +
     '@media print{ body{padding:0;} }' +
     '</style></head><body>' +
-    '<h1>Teileliste — ' + escapeHtml(bg.baugruppen_typ) + (bg.bezeichnung ? ' · ' + escapeHtml(bg.bezeichnung) : '') + '</h1>' +
-    '<div class="meta">' + escapeHtml(fz ? fz.modell : '') + (fz && fz.fahrgestellnr ? ' · ' + escapeHtml(fz.fahrgestellnr) : '') + ' · Riedel Classics · ' + new Date().toLocaleDateString('de-DE') + '</div>' +
-    '<table><thead><tr><th>Pos</th><th>Bezeichnung</th><th>Menge</th><th>Bestell-Nr.</th><th>Zustand</th><th>Hinweis</th></tr></thead><tbody>';
+    '<h1>' + escapeHtml(titel) + '</h1>' +
+    '<div class="meta">' + escapeHtml(meta) + ' · Riedel Classics · ' + new Date().toLocaleDateString('de-DE') + '</div>' +
+    '<table><thead><tr>' + spalten.map(function(s){ return '<th>' + escapeHtml(s.label) + '</th>'; }).join('') + '</tr></thead><tbody>';
 
-  sorted.forEach(function(t){
-    html += '<tr>' +
-      '<td class="pos">' + escapeHtml(t.teilenummer || '') + '</td>' +
-      '<td>' + escapeHtml(t.bezeichnung) + '</td>' +
-      '<td>' + (t.menge || 1) + '</td>' +
-      '<td>' + escapeHtml(t.bestellnummer || '') + '</td>' +
-      '<td class="zustand-' + (t.zustand||'offen') + '">' + (zustandLabel[t.zustand] || '—') + '</td>' +
-      '<td class="hint">' + escapeHtml(t.hinweis || '') + '</td>' +
-      '</tr>';
+  rows.forEach(function(r){
+    html += '<tr>' + spalten.map(function(s){ return '<td' + (s.cls ? ' class="' + s.cls(r) + '"' : '') + '>' + s.get(r) + '</td>'; }).join('') + '</tr>';
   });
   html += '</tbody></table></body></html>';
 
@@ -1654,6 +1642,70 @@ function druckeTeileliste(){
   win.document.write(html);
   win.document.close();
   setTimeout(function(){ win.print(); }, 300);
+}
+
+function druckeTeileliste(){
+  var bg = state.aktiveBaugruppe;
+  var fz = state.aktivesFahrzeug;
+  var rows = state.instanzTeileCache[bg.id] || [];
+  if(!rows.length){ toast("Keine Teile zum Drucken", "err"); return; }
+  var sorted = sortByTeilenummer(rows);
+  var zustandLabel = {ok:"OK", verschlissen:"Verschleiß", defekt:"Defekt", offen:"—"};
+
+  oeffnePrintFenster(
+    "Teileliste — " + bg.baugruppen_typ + (bg.bezeichnung ? " · " + bg.bezeichnung : ""),
+    (fz ? fz.modell : "") + (fz && fz.fahrgestellnr ? " · " + fz.fahrgestellnr : ""),
+    sorted,
+    [
+      {label:"Pos", get:function(t){return escapeHtml(t.teilenummer||"");}, cls:function(){return "pos";}},
+      {label:"Bezeichnung", get:function(t){return escapeHtml(t.bezeichnung);}},
+      {label:"Menge", get:function(t){return t.menge||1;}},
+      {label:"Bestell-Nr.", get:function(t){return escapeHtml(t.bestellnummer||"");}},
+      {label:"OE-Nr.", get:function(t){return escapeHtml(t.oe_nummer||"");}},
+      {label:"Zustand", get:function(t){return zustandLabel[t.zustand]||"—";}, cls:function(t){return "zustand-"+(t.zustand||"offen");}},
+      {label:"Hinweis", get:function(t){return escapeHtml(t.hinweis||"");}, cls:function(){return "hint";}}
+    ]
+  );
+}
+
+function druckeBestellung(){
+  var b = state.aktiveBestellung;
+  sbGet("bg_instanz_teile?select=*,bg_instanzen(baugruppen_typ)&bestellauftrag_id=eq." + b.id).then(function(rows){
+    if(!rows || !rows.length){ toast("Keine Positionen zum Drucken", "err"); return; }
+    var sorted = sortByTeilenummer(rows);
+    oeffnePrintFenster(
+      "Bestellauftrag — " + (b.bezeichnung || ""),
+      (b.lieferant ? "Lieferant: " + b.lieferant : "Kein Lieferant hinterlegt") + " · Status: " + b.status,
+      sorted,
+      [
+        {label:"Pos", get:function(t){return escapeHtml(t.teilenummer||"");}, cls:function(){return "pos";}},
+        {label:"Bezeichnung", get:function(t){return escapeHtml(t.bezeichnung) + (t.bg_instanzen ? " (" + escapeHtml(t.bg_instanzen.baugruppen_typ) + ")" : "");}},
+        {label:"Menge", get:function(t){return t.menge||1;}},
+        {label:"Bestell-Nr.", get:function(t){return escapeHtml(t.bestellnummer||"");}},
+        {label:"OE-Nr.", get:function(t){return escapeHtml(t.oe_nummer||"");}},
+        {label:"Wareneingang", get:function(t){return t.wareneingang ? "✓ erhalten" : "offen";}}
+      ]
+    );
+  });
+}
+
+function druckeExternAuftrag(){
+  var ex = state.aktiverExternAuftrag;
+  sbGet("bg_instanz_teile?select=*,bg_instanzen(baugruppen_typ)&externauftrag_id=eq." + ex.id).then(function(rows){
+    if(!rows || !rows.length){ toast("Keine Positionen zum Drucken", "err"); return; }
+    var sorted = sortByTeilenummer(rows);
+    oeffnePrintFenster(
+      "Extern-Auftrag — " + (ex.bezeichnung || ""),
+      escapeHtml(ex.art || "") + (ex.dienstleister ? " · " + escapeHtml(ex.dienstleister) : "") + " · Status: " + ex.status,
+      sorted,
+      [
+        {label:"Pos", get:function(t){return escapeHtml(t.teilenummer||"");}, cls:function(){return "pos";}},
+        {label:"Bezeichnung", get:function(t){return escapeHtml(t.bezeichnung) + (t.bg_instanzen ? " (" + escapeHtml(t.bg_instanzen.baugruppen_typ) + ")" : "");}},
+        {label:"Menge", get:function(t){return t.menge||1;}},
+        {label:"Rückgabe", get:function(t){return t.rueckgabe ? "✓ zurück" : "offen";}}
+      ]
+    );
+  });
 }
 
 function saveBgNotizen(){
