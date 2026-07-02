@@ -737,7 +737,7 @@ function renderTeileListe(rows){
     row.className = "teilItem";
     row.innerHTML =
       '<div class="teilMain">' +
-        '<div class="teilName">' + escapeHtml(t.bezeichnung) + '</div>' +
+        '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + '</div>' +
         (t.hinweis ? '<div class="teilHint">' + escapeHtml(t.hinweis) + '</div>' : '') +
       '</div>' +
       '<div class="zustandPicker">' +
