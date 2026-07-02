@@ -185,8 +185,9 @@
   .zoomClose{position:absolute; top:20px; right:20px; width:38px; height:38px; border-radius:50%; background:var(--bg-card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:18px;}
 
   .editTeilRow{background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:12px; padding:12px; margin-bottom:8px;}
-  .editTeilGrid{display:grid; grid-template-columns:52px 1fr; gap:8px; margin-bottom:8px;}
+  .editTeilGrid{display:grid; grid-template-columns:52px 1fr 52px; gap:8px; margin-bottom:8px;}
   .editTeilGrid input{padding:9px 10px; font-size:13px;}
+  .editTeilGrid input[data-field="menge"]{text-align:center;}
   .editTeilGrid2{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;}
   .editTeilGrid2 input{padding:9px 10px; font-size:13px;}
   .editTeilFoot{display:flex; justify-content:space-between; align-items:center; gap:8px;}
@@ -252,11 +253,17 @@
 
     <div class="photoBox" id="photoBox" onclick="triggerPhoto()">
       <div class="icon">📷</div>
-      <div class="hint">Foto der Baugruppe aufnehmen</div>
+      <div class="hint">Werkstattfoto aufnehmen (mit KI-Analyse)</div>
       <input type="file" accept="image/*" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">
     </div>
 
     <div id="kiBoxWrap"></div>
+
+    <div class="refPhotoBox" id="instRefPhotoBox" onclick="handleInstRefPhotoClick()" style="min-height:100px; margin-top:10px;">
+      <div class="icon">🖼️</div>
+      <div class="hint">Referenzbild / Katalogzeichnung (ohne KI-Analyse)</div>
+      <input type="file" accept="image/*" id="instRefPhotoInput" style="display:none" onchange="onInstRefPhotoSelected(event)">
+    </div>
 
     <div class="sectionLabel">Teileliste <span id="teilCount" style="color:var(--text-faint); font-weight:600;"></span></div>
     <div class="card" id="teileCard" style="padding:4px 16px;"></div>
@@ -265,6 +272,7 @@
       <button class="btn ghost" onclick="openVorlageLaden()">Vorlage laden</button>
       <button class="btn primary" onclick="teileZuBestellungUebernehmen()">In Bestellung übernehmen</button>
     </div>
+    <button class="btn ghost full" style="margin-top:10px;" onclick="druckeTeileliste()">🖨️ Teileliste drucken / PDF</button>
 
     <div class="sectionLabel" style="margin-top:26px;">Notizen</div>
     <textarea id="bgNotizen" placeholder="Zustand, Besonderheiten, Maße..." onblur="saveBgNotizen()"></textarea>
@@ -701,6 +709,7 @@ function openBaugruppeDetail(bg){
   renderStatusStrip(bg.status);
   renderPhotoBox(bg);
   renderKiBox(bg);
+  renderInstRefPhotoBox(bg);
   showView("view-bgDetail");
   loadInstanzTeile(bg.id);
 }
@@ -761,6 +770,53 @@ function renderKiBox(bg){
   }
 }
 
+// Referenzbild pro Instanz: KEINE KI-Analyse, wird zusätzlich in verknüpfte Vorlage übernommen
+function renderInstRefPhotoBox(bg){
+  var box = document.getElementById("instRefPhotoBox");
+  if(bg.referenzbild_url){
+    box.className = "refPhotoBox hasImg";
+    box.innerHTML = '<img src="' + bg.referenzbild_url + '"><input type="file" accept="image/*" id="instRefPhotoInput" style="display:none" onchange="onInstRefPhotoSelected(event)">';
+  } else {
+    box.className = "refPhotoBox";
+    box.style.minHeight = "100px";
+    box.innerHTML = '<div class="icon">🖼️</div><div class="hint">Referenzbild / Katalogzeichnung (ohne KI-Analyse)</div><input type="file" accept="image/*" id="instRefPhotoInput" style="display:none" onchange="onInstRefPhotoSelected(event)">';
+  }
+}
+function handleInstRefPhotoClick(){
+  if(state.aktiveBaugruppe.referenzbild_url){
+    openZoom(state.aktiveBaugruppe.referenzbild_url);
+  } else {
+    document.getElementById("instRefPhotoInput").click();
+  }
+}
+function onInstRefPhotoSelected(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var dataUrl = ev.target.result;
+    var bg = state.aktiveBaugruppe;
+    sbPatch("bg_instanzen", "id=eq." + bg.id, {referenzbild_url: dataUrl}).then(function(){
+      bg.referenzbild_url = dataUrl;
+      renderInstRefPhotoBox(bg);
+      toast("Referenzbild gespeichert", "ok");
+      // Automatische Übernahme in verknüpfte Vorlage, falls dort noch keins hinterlegt ist
+      if(bg.vorlage_id){
+        sbGet("bg_vorlagen?select=id,referenzbild_url&id=eq." + bg.vorlage_id).then(function(rows){
+          if(rows && rows[0] && !rows[0].referenzbild_url){
+            sbPatch("bg_vorlagen", "id=eq." + bg.vorlage_id, {referenzbild_url: dataUrl}).then(function(){
+              var idx = state.vorlagen.findIndex(function(x){ return x.id === bg.vorlage_id; });
+              if(idx > -1) state.vorlagen[idx].referenzbild_url = dataUrl;
+              toast("Auch im Katalog hinterlegt", "ok");
+            });
+          }
+        });
+      }
+    });
+  };
+  reader.readAsDataURL(file);
+}
+
 function analysiereFoto(dataUrl){
   var wrap = document.getElementById("kiBoxWrap");
   wrap.innerHTML = '<div class="kiBox"><div class="kiLabel"><span class="kiSpin"></span> Analysiere Foto...</div></div>';
@@ -807,9 +863,10 @@ function analysiereFoto(dataUrl){
 
 // ============ TEILELISTE ============
 function loadInstanzTeile(instanzId){
-  sbGet("bg_instanz_teile?select=*&instanz_id=eq." + instanzId + "&order=position.asc").then(function(rows){
-    state.instanzTeileCache[instanzId] = rows || [];
-    renderTeileListe(rows || []);
+  sbGet("bg_instanz_teile?select=*&instanz_id=eq." + instanzId).then(function(rows){
+    var sorted = sortByTeilenummer(rows || []);
+    state.instanzTeileCache[instanzId] = sorted;
+    renderTeileListe(sorted);
   });
 }
 state.teileEditMode = false;
@@ -838,6 +895,7 @@ function renderTeileListe(rows){
         '<div class="editTeilGrid">' +
           '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-id="' + t.id + '">' +
           '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-id="' + t.id + '">' +
+          '<input type="number" min="1" placeholder="Menge" value="' + (t.menge || 1) + '" data-field="menge" data-id="' + t.id + '">' +
         '</div>' +
         '<div class="editTeilGrid2">' +
           '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-id="' + t.id + '">' +
@@ -854,7 +912,7 @@ function renderTeileListe(rows){
       inp.addEventListener(evt, function(){
         var id = inp.getAttribute("data-id");
         var field = inp.getAttribute("data-field");
-        var val = inp.type === "checkbox" ? inp.checked : inp.value;
+        var val = inp.type === "checkbox" ? inp.checked : (inp.type === "number" ? (parseInt(inp.value, 10) || 1) : inp.value);
         var body = {}; body[field] = val;
         sbPatch("bg_instanz_teile", "id=eq." + id, body).then(function(){
           var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
@@ -896,7 +954,7 @@ function renderTeileListe(rows){
     row.className = "teilItem";
     row.innerHTML =
       '<div class="teilMain">' +
-        '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + '</div>' +
+        '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + (t.menge && t.menge > 1 ? ' <span style="color:var(--accent); font-weight:700; font-size:12px;">×' + t.menge + '</span>' : '') + '</div>' +
         (t.bestellnummer ? '<div class="teilHint">Bestell-Nr: ' + escapeHtml(t.bestellnummer) + (t.hinweis ? ' · ' + escapeHtml(t.hinweis) : '') + '</div>' : (t.hinweis ? '<div class="teilHint">' + escapeHtml(t.hinweis) + '</div>' : '')) +
       '</div>' +
       '<div class="zustandPicker">' +
@@ -964,15 +1022,17 @@ function vorlageOption(v){
   return el;
 }
 function applyVorlage(vorlageId){
-  sbGet("bg_vorlage_teile?select=*&vorlage_id=eq." + vorlageId + "&order=position.asc").then(function(teile){
+  sbGet("bg_vorlage_teile?select=*&vorlage_id=eq." + vorlageId).then(function(teile){
+    teile = sortByTeilenummer(teile || []);
     if(!teile || !teile.length){ toast("Vorlage ist leer", "err"); return; }
-    var neueTeile = teile.map(function(t){
+    var neueTeile = teile.map(function(t, i){
       return {
         instanz_id: state.aktiveBaugruppe.id,
-        position: t.position,
+        position: i,
         bezeichnung: t.bezeichnung,
         teilenummer: t.teilenummer,
         bestellnummer: t.bestellnummer,
+        menge: t.menge || 1,
         verschleissteil: t.verschleissteil,
         hinweis: t.hinweis,
         zustand: "offen"
@@ -1159,8 +1219,8 @@ function openVorlageDetail(v){
   document.getElementById("vorlageDetailTitle").textContent = v.name;
   renderRefPhotoBox(v);
   showView("view-vorlageDetail");
-  sbGet("bg_vorlage_teile?select=*&vorlage_id=eq." + v.id + "&order=position.asc").then(function(rows){
-    state.vorlageTeileEdit = rows || [];
+  sbGet("bg_vorlage_teile?select=*&vorlage_id=eq." + v.id).then(function(rows){
+    state.vorlageTeileEdit = sortByTeilenummer(rows || []);
     renderVorlageTeileEditor();
   });
 }
@@ -1221,6 +1281,7 @@ function renderVorlageTeileEditor(){
       '<div class="editTeilGrid">' +
         '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-idx="' + idx + '">' +
         '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-idx="' + idx + '">' +
+        '<input type="number" min="1" placeholder="Menge" value="' + (t.menge || 1) + '" data-field="menge" data-idx="' + idx + '">' +
       '</div>' +
       '<div class="editTeilGrid2">' +
         '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-idx="' + idx + '">' +
@@ -1239,7 +1300,7 @@ function renderVorlageTeileEditor(){
     inp.addEventListener(evt, function(){
       var idx = parseInt(inp.getAttribute("data-idx"));
       var field = inp.getAttribute("data-field");
-      var val = inp.type === "checkbox" ? inp.checked : inp.value;
+      var val = inp.type === "checkbox" ? inp.checked : (inp.type === "number" ? (parseInt(inp.value, 10) || 1) : inp.value);
       state.vorlageTeileEdit[idx][field] = val;
       saveVorlageTeil(state.vorlageTeileEdit[idx]);
     });
@@ -1256,13 +1317,13 @@ function saveVorlageTeil(t){
   if(t.id && !t._isNew){
     sbPatch("bg_vorlage_teile", "id=eq." + t.id, {
       teilenummer: t.teilenummer, bezeichnung: t.bezeichnung, bestellnummer: t.bestellnummer,
-      hinweis: t.hinweis, verschleissteil: t.verschleissteil
+      hinweis: t.hinweis, verschleissteil: t.verschleissteil, menge: t.menge || 1
     });
   } else {
     sbPost("bg_vorlage_teile", {
       vorlage_id: state.aktiveVorlage.id, position: state.vorlageTeileEdit.length,
       teilenummer: t.teilenummer, bezeichnung: t.bezeichnung, bestellnummer: t.bestellnummer,
-      hinweis: t.hinweis, verschleissteil: t.verschleissteil
+      hinweis: t.hinweis, verschleissteil: t.verschleissteil, menge: t.menge || 1
     }, true).then(function(res){
       if(res && res[0]){ t.id = res[0].id; t._isNew = false; }
     });
@@ -1296,6 +1357,55 @@ function escapeAttr(s){
 }
 
 // ============ NOTIZEN ============
+// ============ DRUCK / PDF ============
+function druckeTeileliste(){
+  var bg = state.aktiveBaugruppe;
+  var fz = state.aktivesFahrzeug;
+  var rows = state.instanzTeileCache[bg.id] || [];
+  if(!rows.length){ toast("Keine Teile zum Drucken", "err"); return; }
+
+  var sorted = sortByTeilenummer(rows);
+  var zustandLabel = {ok:"OK", verschlissen:"Verschleiß", defekt:"Defekt", offen:"—"};
+
+  var html = '<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">' +
+    '<title>Teileliste ' + escapeHtml(bg.baugruppen_typ) + '</title>' +
+    '<style>' +
+    'body{font-family:-apple-system,Arial,sans-serif; padding:24px; color:#111;}' +
+    'h1{font-size:18px; margin-bottom:2px;}' +
+    '.meta{font-size:12px; color:#555; margin-bottom:18px;}' +
+    'table{width:100%; border-collapse:collapse; font-size:12px;}' +
+    'th{text-align:left; border-bottom:2px solid #111; padding:6px 8px; font-size:11px; text-transform:uppercase;}' +
+    'td{padding:6px 8px; border-bottom:1px solid #ddd; vertical-align:top;}' +
+    '.pos{font-family:monospace; color:#666; white-space:nowrap;}' +
+    '.hint{color:#777; font-size:11px;}' +
+    '.zustand-defekt{color:#c0392b; font-weight:700;}' +
+    '.zustand-verschlissen{color:#b8860b; font-weight:700;}' +
+    '.zustand-ok{color:#2a8a4a;}' +
+    '@media print{ body{padding:0;} }' +
+    '</style></head><body>' +
+    '<h1>Teileliste — ' + escapeHtml(bg.baugruppen_typ) + (bg.bezeichnung ? ' · ' + escapeHtml(bg.bezeichnung) : '') + '</h1>' +
+    '<div class="meta">' + escapeHtml(fz ? fz.modell : '') + (fz && fz.fahrgestellnr ? ' · ' + escapeHtml(fz.fahrgestellnr) : '') + ' · Riedel Classics · ' + new Date().toLocaleDateString('de-DE') + '</div>' +
+    '<table><thead><tr><th>Pos</th><th>Bezeichnung</th><th>Menge</th><th>Bestell-Nr.</th><th>Zustand</th><th>Hinweis</th></tr></thead><tbody>';
+
+  sorted.forEach(function(t){
+    html += '<tr>' +
+      '<td class="pos">' + escapeHtml(t.teilenummer || '') + '</td>' +
+      '<td>' + escapeHtml(t.bezeichnung) + '</td>' +
+      '<td>' + (t.menge || 1) + '</td>' +
+      '<td>' + escapeHtml(t.bestellnummer || '') + '</td>' +
+      '<td class="zustand-' + (t.zustand||'offen') + '">' + (zustandLabel[t.zustand] || '—') + '</td>' +
+      '<td class="hint">' + escapeHtml(t.hinweis || '') + '</td>' +
+      '</tr>';
+  });
+  html += '</tbody></table></body></html>';
+
+  var win = window.open('', '_blank');
+  if(!win){ toast("Popup blockiert — bitte erlauben", "err"); return; }
+  win.document.write(html);
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 300);
+}
+
 function saveBgNotizen(){
   var val = document.getElementById("bgNotizen").value;
   sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {notizen: val}).then(function(){
@@ -1315,6 +1425,16 @@ function escapeHtml(s){
   if(s === null || s === undefined) return "";
   return String(s).replace(/[&<>"']/g, function(c){
     return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function sortByTeilenummer(rows){
+  return rows.slice().sort(function(a, b){
+    var na = parseInt((a.teilenummer || "").replace(/\D/g, ""), 10);
+    var nb = parseInt((b.teilenummer || "").replace(/\D/g, ""), 10);
+    if(isNaN(na) && isNaN(nb)) return 0;
+    if(isNaN(na)) return 1;
+    if(isNaN(nb)) return -1;
+    return na - nb;
   });
 }
 
