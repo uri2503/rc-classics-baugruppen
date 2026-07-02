@@ -167,6 +167,38 @@
   .orderTeil .otWe.on{background:var(--ok); border-color:var(--ok); color:#08131c;}
 
   select{ -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239098a8' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 12px center; background-size:16px; padding-right:36px;}
+
+  /* Vorlagen-Detail / Editor */
+  .vorlageCard{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .vorlageThumb{width:44px; height:44px; border-radius:9px; background:var(--bg-elevated); border:1px solid var(--line); flex-shrink:0; overflow:hidden; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:16px;}
+  .vorlageThumb img{width:100%; height:100%; object-fit:cover;}
+
+  .refPhotoBox{width:100%; border-radius:14px; background:var(--bg-elevated); border:1px dashed var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text-faint); overflow:hidden; position:relative; margin-bottom:14px; min-height:160px;}
+  .refPhotoBox img{width:100%; display:block;}
+  .refPhotoBox .hint{font-size:12px;}
+  .refPhotoBox .icon{font-size:26px;}
+  .refPhotoBox.hasImg{border-style:solid; cursor:zoom-in;}
+
+  .zoomOverlay{position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:250; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:.2s; padding:20px;}
+  .zoomOverlay.show{opacity:1; pointer-events:auto;}
+  .zoomOverlay img{max-width:100%; max-height:100%; border-radius:8px;}
+  .zoomClose{position:absolute; top:20px; right:20px; width:38px; height:38px; border-radius:50%; background:var(--bg-card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:18px;}
+
+  .editTeilRow{background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:12px; padding:12px; margin-bottom:8px;}
+  .editTeilGrid{display:grid; grid-template-columns:52px 1fr; gap:8px; margin-bottom:8px;}
+  .editTeilGrid input{padding:9px 10px; font-size:13px;}
+  .editTeilGrid2{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;}
+  .editTeilGrid2 input{padding:9px 10px; font-size:13px;}
+  .editTeilFoot{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .editTeilFoot label.inlineChk{display:flex; align-items:center; gap:6px; margin:0; text-transform:none; font-weight:500; color:var(--text-dim); font-size:12.5px;}
+  .editTeilFoot input[type=checkbox]{width:17px; height:17px; accent-color:var(--accent);}
+  .removeTeilBtn{width:30px; height:30px; border-radius:8px; background:rgba(224,82,61,.1); border:1px solid rgba(224,82,61,.25); color:var(--bad); font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+  .addTeilBtn{width:100%; padding:12px; border-radius:11px; border:1px dashed var(--line); background:transparent; color:var(--accent); font-size:13.5px; font-weight:700; margin-top:4px;}
+
+  .editModeToggle{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent); padding:6px 12px; border-radius:20px; background:rgba(14,165,233,.1); border:1px solid rgba(14,165,233,.25);}
+
+  .miniPhotoBtn{display:flex; align-items:center; justify-content:center; gap:6px; padding:9px; border-radius:9px; border:1px dashed var(--line); background:var(--bg-card); color:var(--text-dim); font-size:12px; font-weight:600; margin-bottom:8px;}
+  .miniPhotoBtn img{width:100%; border-radius:7px; margin-top:6px;}
 </style>
 </head>
 <body>
@@ -261,6 +293,25 @@
     <h2 class="viewTitle">Katalog-Vorlagen</h2>
     <div class="sub">Standard-Teilelisten je Modell &amp; Baugruppentyp</div>
     <div id="vorlagenListe"></div>
+    <button class="btn primary full" style="margin-top:14px;" onclick="openNeueVorlage()">+ Neue Vorlage</button>
+  </div>
+
+  <!-- VIEW: Vorlagen-Detail (Editor) -->
+  <div class="view" id="view-vorlageDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="goTo('vorlagen')">←</div>
+      <div class="detailTitle" id="vorlageDetailTitle">Vorlage</div>
+    </div>
+
+    <div class="refPhotoBox" id="refPhotoBox" onclick="handleRefPhotoBoxClick()">
+      <div class="icon">🖼️</div>
+      <div class="hint">Explosionszeichnung / Referenzbild hinzufügen</div>
+      <input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">
+    </div>
+
+    <div class="sectionLabel">Teile <span id="vorlageTeilCount" style="color:var(--text-faint); font-weight:600;"></span></div>
+    <div id="vorlageTeileEditor"></div>
+    <button class="addTeilBtn" onclick="addLeeresTeil()">+ Teil hinzufügen</button>
   </div>
 
 </main>
@@ -283,6 +334,42 @@
 </nav>
 
 <div class="toast" id="toast"></div>
+
+<div class="zoomOverlay" id="zoomOverlay" onclick="closeZoom()">
+  <div class="zoomClose">✕</div>
+  <img id="zoomImg" src="">
+</div>
+
+<!-- Modal: Neue Vorlage -->
+<div class="modalBg" id="modalNeueVorlage">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Neue Vorlage</div>
+    <label>Modell</label>
+    <input type="text" id="inpVModell" placeholder="z.B. W111 59-66">
+    <label>Baugruppentyp</label>
+    <select id="inpVTyp">
+      <option>Motor</option>
+      <option>Getriebe</option>
+      <option>Vorderachse</option>
+      <option>Achse hinten</option>
+      <option>Differenzial</option>
+      <option>Bremsen vorne</option>
+      <option>Bremsen hinten</option>
+      <option>Lenkung</option>
+      <option>Karosserie</option>
+      <option>Innenausstattung</option>
+      <option>Elektrik</option>
+      <option>Sonstiges</option>
+    </select>
+    <label>Name der Vorlage</label>
+    <input type="text" id="inpVName" placeholder="z.B. W111 Vorderachse 59-66 Standard">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalNeueVorlage')">Abbrechen</button>
+      <button class="btn primary" onclick="saveNeueVorlage()">Anlegen</button>
+    </div>
+  </div>
+</div>
 
 <!-- Modal: Neues Fahrzeug -->
 <div class="modalBg" id="modalFahrzeug">
@@ -608,6 +695,7 @@ function backToFahrzeug(){
 // ============ BAUGRUPPEN-DETAIL ============
 function openBaugruppeDetail(bg){
   state.aktiveBaugruppe = bg;
+  state.teileEditMode = false;
   document.getElementById("bgDetailTitle").textContent = bg.baugruppen_typ + (bg.bezeichnung ? " · " + bg.bezeichnung : "");
   document.getElementById("bgNotizen").value = bg.notizen || "";
   renderStatusStrip(bg.status);
@@ -724,21 +812,92 @@ function loadInstanzTeile(instanzId){
     renderTeileListe(rows || []);
   });
 }
+state.teileEditMode = false;
+function toggleTeileEditMode(){
+  state.teileEditMode = !state.teileEditMode;
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  renderTeileListe(rows);
+}
 function renderTeileListe(rows){
   var card = document.getElementById("teileCard");
-  document.getElementById("teilCount").textContent = rows.length ? (rows.length + " Positionen") : "";
+  var countLabel = document.getElementById("teilCount");
+  countLabel.innerHTML = (rows.length ? (rows.length + " Positionen ") : "") +
+    '<span class="editModeToggle" style="margin-left:8px; cursor:pointer;" onclick="toggleTeileEditMode()">' + (state.teileEditMode ? "Fertig" : "✎ Bearbeiten") + '</span>';
   if(!rows.length){
     card.innerHTML = '<div class="emptyState" style="padding:30px 10px;"><div class="icon">📋</div><p>Noch keine Teile erfasst.</p><p>Lade eine Vorlage oder füge Teile manuell hinzu.</p></div>';
     return;
   }
   card.innerHTML = "";
+
+  if(state.teileEditMode){
+    rows.forEach(function(t, idx){
+      var row = document.createElement("div");
+      row.className = "editTeilRow";
+      row.style.margin = "10px 0";
+      row.innerHTML =
+        '<div class="editTeilGrid">' +
+          '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-id="' + t.id + '">' +
+          '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-id="' + t.id + '">' +
+        '</div>' +
+        '<div class="editTeilGrid2">' +
+          '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-id="' + t.id + '">' +
+          '<input type="text" placeholder="Hinweis" value="' + escapeAttr(t.hinweis) + '" data-field="hinweis" data-id="' + t.id + '">' +
+        '</div>' +
+        '<div class="editTeilFoot">' +
+          '<label class="inlineChk"><input type="checkbox" data-field="verschleissteil" data-id="' + t.id + '" ' + (t.verschleissteil ? 'checked' : '') + '> Verschleißteil</label>' +
+          '<div class="removeTeilBtn" data-id="' + t.id + '">✕</div>' +
+        '</div>';
+      card.appendChild(row);
+    });
+    card.querySelectorAll("input[data-field]").forEach(function(inp){
+      var evt = inp.type === "checkbox" ? "change" : "blur";
+      inp.addEventListener(evt, function(){
+        var id = inp.getAttribute("data-id");
+        var field = inp.getAttribute("data-field");
+        var val = inp.type === "checkbox" ? inp.checked : inp.value;
+        var body = {}; body[field] = val;
+        sbPatch("bg_instanz_teile", "id=eq." + id, body).then(function(){
+          var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+          arr.forEach(function(r){ if(r.id === id) r[field] = val; });
+        });
+      });
+    });
+    card.querySelectorAll(".removeTeilBtn").forEach(function(btn){
+      btn.onclick = function(){
+        var id = btn.getAttribute("data-id");
+        sbDelete("bg_instanz_teile", "id=eq." + id).then(function(){
+          var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+          state.instanzTeileCache[state.aktiveBaugruppe.id] = arr.filter(function(r){ return r.id !== id; });
+          renderTeileListe(state.instanzTeileCache[state.aktiveBaugruppe.id]);
+          toast("Teil gelöscht", "ok");
+        });
+      };
+    });
+    var addBtn = document.createElement("button");
+    addBtn.className = "addTeilBtn";
+    addBtn.textContent = "+ Teil hinzufügen";
+    addBtn.onclick = function(){
+      sbPost("bg_instanz_teile", {
+        instanz_id: state.aktiveBaugruppe.id, position: rows.length,
+        bezeichnung: "Neues Teil", zustand: "offen"
+      }, true).then(function(res){
+        if(res && res[0]){
+          state.instanzTeileCache[state.aktiveBaugruppe.id].push(res[0]);
+          renderTeileListe(state.instanzTeileCache[state.aktiveBaugruppe.id]);
+        }
+      });
+    };
+    card.appendChild(addBtn);
+    return;
+  }
+
   rows.forEach(function(t){
     var row = document.createElement("div");
     row.className = "teilItem";
     row.innerHTML =
       '<div class="teilMain">' +
         '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + '</div>' +
-        (t.hinweis ? '<div class="teilHint">' + escapeHtml(t.hinweis) + '</div>' : '') +
+        (t.bestellnummer ? '<div class="teilHint">Bestell-Nr: ' + escapeHtml(t.bestellnummer) + (t.hinweis ? ' · ' + escapeHtml(t.hinweis) : '') + '</div>' : (t.hinweis ? '<div class="teilHint">' + escapeHtml(t.hinweis) + '</div>' : '')) +
       '</div>' +
       '<div class="zustandPicker">' +
         '<div class="zBtn ok ' + (t.zustand==='ok'?'active':'') + '" data-z="ok">✓</div>' +
@@ -813,6 +972,7 @@ function applyVorlage(vorlageId){
         position: t.position,
         bezeichnung: t.bezeichnung,
         teilenummer: t.teilenummer,
+        bestellnummer: t.bestellnummer,
         verschleissteil: t.verschleissteil,
         hinweis: t.hinweis,
         zustand: "offen"
@@ -954,12 +1114,185 @@ function renderVorlagenView(){
   wrap.innerHTML = "";
   state.vorlagen.forEach(function(v){
     var el = document.createElement("div");
-    el.className = "card";
+    el.className = "card tap";
+    el.onclick = function(){ openVorlageDetail(v); };
     el.innerHTML =
-      '<div class="fzTitle">' + escapeHtml(v.name) + '</div>' +
-      '<div class="fzMeta">' + escapeHtml(v.modell) + ' · ' + escapeHtml(v.baugruppen_typ) + '</div>';
+      '<div class="vorlageCard">' +
+        '<div class="vorlageThumb">' + (v.referenzbild_url ? '<img src="' + v.referenzbild_url + '">' : '🖼️') + '</div>' +
+        '<div class="fzMain">' +
+          '<div class="fzTitle" style="font-size:14px;">' + escapeHtml(v.name) + '</div>' +
+          '<div class="fzMeta">' + escapeHtml(v.modell) + ' · ' + escapeHtml(v.baugruppen_typ) + '</div>' +
+        '</div>' +
+        '<div class="arrow">›</div>' +
+      '</div>';
     wrap.appendChild(el);
   });
+}
+
+function openNeueVorlage(){
+  document.getElementById("inpVModell").value = "";
+  document.getElementById("inpVName").value = "";
+  openModal("modalNeueVorlage");
+}
+function saveNeueVorlage(){
+  var modell = document.getElementById("inpVModell").value.trim();
+  var typ = document.getElementById("inpVTyp").value;
+  var name = document.getElementById("inpVName").value.trim();
+  if(!modell || !name){ toast("Modell und Name ausfüllen", "err"); return; }
+  sbPost("bg_vorlagen", {modell: modell, baugruppen_typ: typ, name: name}, true).then(function(res){
+    closeModal("modalNeueVorlage");
+    toast("Vorlage angelegt", "ok");
+    sbGet("bg_vorlagen?select=*&aktiv=eq.true&order=modell.asc").then(function(rows){
+      state.vorlagen = rows || [];
+      renderVorlagenView();
+      if(res && res[0]) openVorlageDetail(res[0]);
+    });
+  });
+}
+
+// ============ VORLAGEN-DETAIL (EDITOR) ============
+state.aktiveVorlage = null;
+state.vorlageTeileEdit = [];
+
+function openVorlageDetail(v){
+  state.aktiveVorlage = v;
+  document.getElementById("vorlageDetailTitle").textContent = v.name;
+  renderRefPhotoBox(v);
+  showView("view-vorlageDetail");
+  sbGet("bg_vorlage_teile?select=*&vorlage_id=eq." + v.id + "&order=position.asc").then(function(rows){
+    state.vorlageTeileEdit = rows || [];
+    renderVorlageTeileEditor();
+  });
+}
+
+function renderRefPhotoBox(v){
+  var box = document.getElementById("refPhotoBox");
+  if(v.referenzbild_url){
+    box.className = "refPhotoBox hasImg";
+    box.innerHTML = '<img src="' + v.referenzbild_url + '"><input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">';
+  } else {
+    box.className = "refPhotoBox";
+    box.innerHTML = '<div class="icon">🖼️</div><div class="hint">Explosionszeichnung / Referenzbild hinzufügen</div><input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">';
+  }
+}
+function handleRefPhotoBoxClick(){
+  if(state.aktiveVorlage.referenzbild_url){
+    openZoom(state.aktiveVorlage.referenzbild_url);
+  } else {
+    document.getElementById("refPhotoInput").click();
+  }
+}
+function onRefPhotoSelected(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var dataUrl = ev.target.result;
+    sbPatch("bg_vorlagen", "id=eq." + state.aktiveVorlage.id, {referenzbild_url: dataUrl}).then(function(){
+      state.aktiveVorlage.referenzbild_url = dataUrl;
+      renderRefPhotoBox(state.aktiveVorlage);
+      toast("Referenzbild gespeichert", "ok");
+      var idx = state.vorlagen.findIndex(function(x){ return x.id === state.aktiveVorlage.id; });
+      if(idx > -1) state.vorlagen[idx].referenzbild_url = dataUrl;
+    });
+  };
+  reader.readAsDataURL(file);
+}
+function openZoom(url){
+  document.getElementById("zoomImg").src = url;
+  document.getElementById("zoomOverlay").classList.add("show");
+}
+function closeZoom(){
+  document.getElementById("zoomOverlay").classList.remove("show");
+}
+
+function renderVorlageTeileEditor(){
+  var wrap = document.getElementById("vorlageTeileEditor");
+  document.getElementById("vorlageTeilCount").textContent = state.vorlageTeileEdit.length ? (state.vorlageTeileEdit.length + " Teile") : "";
+  if(!state.vorlageTeileEdit.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:24px 10px;"><p>Noch keine Teile. Füge welche hinzu.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  state.vorlageTeileEdit.forEach(function(t, idx){
+    var row = document.createElement("div");
+    row.className = "editTeilRow";
+    row.innerHTML =
+      '<div class="editTeilGrid">' +
+        '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-idx="' + idx + '">' +
+        '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-idx="' + idx + '">' +
+      '</div>' +
+      '<div class="editTeilGrid2">' +
+        '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-idx="' + idx + '">' +
+        '<input type="text" placeholder="Hinweis" value="' + escapeAttr(t.hinweis) + '" data-field="hinweis" data-idx="' + idx + '">' +
+      '</div>' +
+      '<div class="editTeilFoot">' +
+        '<label class="inlineChk"><input type="checkbox" data-field="verschleissteil" data-idx="' + idx + '" ' + (t.verschleissteil ? 'checked' : '') + '> Verschleißteil</label>' +
+        '<div class="removeTeilBtn" data-idx="' + idx + '">✕</div>' +
+      '</div>';
+    wrap.appendChild(row);
+  });
+
+  // Change-Handler
+  wrap.querySelectorAll("input[data-field]").forEach(function(inp){
+    var evt = inp.type === "checkbox" ? "change" : "blur";
+    inp.addEventListener(evt, function(){
+      var idx = parseInt(inp.getAttribute("data-idx"));
+      var field = inp.getAttribute("data-field");
+      var val = inp.type === "checkbox" ? inp.checked : inp.value;
+      state.vorlageTeileEdit[idx][field] = val;
+      saveVorlageTeil(state.vorlageTeileEdit[idx]);
+    });
+  });
+  wrap.querySelectorAll(".removeTeilBtn").forEach(function(btn){
+    btn.onclick = function(){
+      var idx = parseInt(btn.getAttribute("data-idx"));
+      deleteVorlageTeil(state.vorlageTeileEdit[idx].id, idx);
+    };
+  });
+}
+
+function saveVorlageTeil(t){
+  if(t.id && !t._isNew){
+    sbPatch("bg_vorlage_teile", "id=eq." + t.id, {
+      teilenummer: t.teilenummer, bezeichnung: t.bezeichnung, bestellnummer: t.bestellnummer,
+      hinweis: t.hinweis, verschleissteil: t.verschleissteil
+    });
+  } else {
+    sbPost("bg_vorlage_teile", {
+      vorlage_id: state.aktiveVorlage.id, position: state.vorlageTeileEdit.length,
+      teilenummer: t.teilenummer, bezeichnung: t.bezeichnung, bestellnummer: t.bestellnummer,
+      hinweis: t.hinweis, verschleissteil: t.verschleissteil
+    }, true).then(function(res){
+      if(res && res[0]){ t.id = res[0].id; t._isNew = false; }
+    });
+  }
+}
+function addLeeresTeil(){
+  var neu = {id:null, _isNew:true, teilenummer:"", bezeichnung:"", bestellnummer:"", hinweis:"", verschleissteil:true, position: state.vorlageTeileEdit.length};
+  state.vorlageTeileEdit.push(neu);
+  renderVorlageTeileEditor();
+  // Direkt in Bezeichnungsfeld springen
+  setTimeout(function(){
+    var inputs = document.querySelectorAll('input[data-field="bezeichnung"]');
+    if(inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+function deleteVorlageTeil(id, idx){
+  if(id){
+    sbDelete("bg_vorlage_teile", "id=eq." + id).then(function(){
+      state.vorlageTeileEdit.splice(idx, 1);
+      renderVorlageTeileEditor();
+      toast("Teil gelöscht", "ok");
+    });
+  } else {
+    state.vorlageTeileEdit.splice(idx, 1);
+    renderVorlageTeileEditor();
+  }
+}
+function escapeAttr(s){
+  if(s === null || s === undefined) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
 }
 
 // ============ NOTIZEN ============
