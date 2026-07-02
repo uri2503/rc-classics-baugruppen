@@ -253,7 +253,7 @@
     <div class="photoBox" id="photoBox" onclick="triggerPhoto()">
       <div class="icon">📷</div>
       <div class="hint">Foto der Baugruppe aufnehmen</div>
-      <input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">
+      <input type="file" accept="image/*" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">
     </div>
 
     <div id="kiBoxWrap"></div>
@@ -728,9 +728,9 @@ function setBaugruppenStatus(status){
 function renderPhotoBox(bg){
   var box = document.getElementById("photoBox");
   if(bg.foto_url){
-    box.innerHTML = '<img src="' + bg.foto_url + '"><input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">';
+    box.innerHTML = '<img src="' + bg.foto_url + '"><input type="file" accept="image/*" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">';
   } else {
-    box.innerHTML = '<div class="icon">📷</div><div class="hint">Foto der Baugruppe aufnehmen</div><input type="file" accept="image/*" capture="environment" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">';
+    box.innerHTML = '<div class="icon">📷</div><div class="hint">Foto der Baugruppe aufnehmen</div><input type="file" accept="image/*" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">';
   }
 }
 function triggerPhoto(){
