@@ -538,7 +538,20 @@ function sbPost(table, body, returnRepr){
 function sbPatch(table, filter, body){
   var h = sbHeaders();
   h["Prefer"] = "return=representation";
-  return fetch(SUPABASE_URL + "/rest/v1/" + table + "?" + filter, {method:"PATCH", headers:h, body:JSON.stringify(body)}).then(function(r){return r.json();});
+  return fetch(SUPABASE_URL + "/rest/v1/" + table + "?" + filter, {method:"PATCH", headers:h, body:JSON.stringify(body)})
+    .then(function(r){
+      if(!r.ok){
+        return r.text().then(function(t){
+          console.error("sbPatch failed", r.status, t);
+          return null;
+        });
+      }
+      return r.text().then(function(t){
+        if(!t){ return []; }
+        try{ return JSON.parse(t); } catch(e){ return null; }
+      });
+    })
+    .catch(function(err){ console.error("sbPatch network error", err); return null; });
 }
 function sbDelete(table, filter){
   return fetch(SUPABASE_URL + "/rest/v1/" + table + "?" + filter, {method:"DELETE", headers:sbHeaders()});
@@ -795,18 +808,24 @@ function komprimiereBild(file, callback){
   reader.onload = function(ev){
     var img = new Image();
     img.onload = function(){
-      var maxDim = 1600;
-      var w = img.width, h = img.height;
-      if(w > maxDim || h > maxDim){
-        if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
-        else { w = Math.round(w * maxDim / h); h = maxDim; }
+      try{
+        var maxDim = 1600;
+        var w = img.width, h = img.height;
+        if(!w || !h){ callback(ev.target.result); return; }
+        if(w > maxDim || h > maxDim){
+          if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        var canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+        if(!dataUrl || dataUrl.length < 100){ callback(ev.target.result); return; }
+        callback(dataUrl);
+      } catch(err){
+        callback(ev.target.result);
       }
-      var canvas = document.createElement("canvas");
-      canvas.width = w; canvas.height = h;
-      var ctx = canvas.getContext("2d");
-      ctx.drawImage(img, 0, 0, w, h);
-      var dataUrl = canvas.toDataURL("image/jpeg", 0.75);
-      callback(dataUrl);
     };
     img.onerror = function(){ callback(ev.target.result); };
     img.src = ev.target.result;
