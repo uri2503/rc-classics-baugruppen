@@ -111,7 +111,7 @@
 
   /* detail view */
   .backBar{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
-  .backBtn{width:34px; height:34px; border-radius:9px; background:var(--bg-card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:16px;}
+  .backBtn{width:44px; height:44px; border-radius:10px; background:var(--bg-card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:19px; flex-shrink:0;}
   .detailTitle{font-size:18px; font-weight:700; flex:1;}
 
   .photoBox{width:100%; aspect-ratio:4/3; border-radius:14px; background:var(--bg-elevated); border:1px dashed var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text-faint); overflow:hidden; position:relative; margin-bottom:14px;}
@@ -252,6 +252,15 @@
   .refItem .refRemove{color:var(--bad); font-size:16px; flex-shrink:0; padding:4px;}
   .refItem .refEdit{color:var(--text-faint); font-size:15px; flex-shrink:0; padding:4px 2px;}
 
+  .refCatHeader{display:flex; align-items:center; gap:7px; padding:12px 2px; margin-top:6px; border-top:1px solid var(--line-soft);}
+  .refCatArrow{font-size:11px; color:var(--text-faint); transition:transform .15s; flex-shrink:0;}
+  .refCatArrow.open{transform:rotate(90deg);}
+  .refCatLabel{font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-dim);}
+  .refCatCount{font-size:10.5px; color:var(--text-faint); background:var(--bg-elevated); border-radius:8px; padding:1px 7px; font-weight:700;}
+  .refCatAdd{margin-left:auto; color:var(--accent); font-size:11.5px; font-weight:700; padding:4px 2px;}
+  .refCatBody{display:none;}
+  .refCatBody.open{display:block; padding-top:2px;}
+
   .hbPickBook{display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:11px; padding:11px 13px; margin-bottom:8px;}
   .hbPickBook .hbPickThumb{width:34px; height:34px; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff;}
   .hbPickBook .hbPickTit{flex:1; font-size:13px; font-weight:600;}
@@ -330,17 +339,37 @@
     <button class="btn ghost full" style="margin-top:10px;" onclick="teileZuExternUebernehmen()">🎨 In Extern-Auftrag übernehmen</button>
     <button class="btn ghost full" style="margin-top:10px;" onclick="druckeTeileliste()">🖨️ Teileliste drucken / PDF</button>
 
-    <div class="sectionLabel" style="margin-top:26px;">🔧 Technische Anleitung<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz','anleitung')">+ Hinzufügen</span></div>
-    <div id="refListe_instanz_anleitung"></div>
+    <div class="refCatHeader" onclick="toggleRefCat('instanz_anleitung')">
+      <span class="refCatArrow" id="refCatArrow_instanz_anleitung">▸</span>
+      <span class="refCatLabel">🔧 Technische Anleitung</span>
+      <span class="refCatCount" id="refCatCount_instanz_anleitung"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('instanz','anleitung')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_instanz_anleitung" class="refCatBody"></div>
 
-    <div class="sectionLabel" style="margin-top:18px;">📐 Einstellwerte<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz','einstellwerte')">+ Hinzufügen</span></div>
-    <div id="refListe_instanz_einstellwerte"></div>
+    <div class="refCatHeader" onclick="toggleRefCat('instanz_einstellwerte')">
+      <span class="refCatArrow" id="refCatArrow_instanz_einstellwerte">▸</span>
+      <span class="refCatLabel">📐 Einstellwerte</span>
+      <span class="refCatCount" id="refCatCount_instanz_einstellwerte"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('instanz','einstellwerte')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_instanz_einstellwerte" class="refCatBody"></div>
 
-    <div class="sectionLabel" style="margin-top:18px;">🔩 Anzugsmomente<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz','anzugsmomente')">+ Hinzufügen</span></div>
-    <div id="refListe_instanz_anzugsmomente"></div>
+    <div class="refCatHeader" onclick="toggleRefCat('instanz_anzugsmomente')">
+      <span class="refCatArrow" id="refCatArrow_instanz_anzugsmomente">▸</span>
+      <span class="refCatLabel">🔩 Anzugsmomente</span>
+      <span class="refCatCount" id="refCatCount_instanz_anzugsmomente"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('instanz','anzugsmomente')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_instanz_anzugsmomente" class="refCatBody"></div>
 
-    <div class="sectionLabel" style="margin-top:18px;">📎 Sonstiges<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz','sonstiges')">+ Hinzufügen</span></div>
-    <div id="refListe_instanz_sonstiges"></div>
+    <div class="refCatHeader" onclick="toggleRefCat('instanz_sonstiges')">
+      <span class="refCatArrow" id="refCatArrow_instanz_sonstiges">▸</span>
+      <span class="refCatLabel">📎 Sonstiges</span>
+      <span class="refCatCount" id="refCatCount_instanz_sonstiges"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('instanz','sonstiges')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_instanz_sonstiges" class="refCatBody"></div>
 
     <div class="sectionLabel" style="margin-top:26px;">Notizen</div>
     <textarea id="bgNotizen" placeholder="Zustand, Besonderheiten, Maße..." onblur="saveBgNotizen()"></textarea>
@@ -408,17 +437,37 @@
     <div id="vorlageTeileEditor"></div>
     <button class="addTeilBtn" onclick="addLeeresTeil()">+ Teil hinzufügen</button>
 
-    <div class="sectionLabel" style="margin-top:26px;">🔧 Technische Anleitung<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage','anleitung')">+ Hinzufügen</span></div>
-    <div id="refListe_vorlage_anleitung"></div>
+    <div class="refCatHeader" onclick="toggleRefCat('vorlage_anleitung')">
+      <span class="refCatArrow" id="refCatArrow_vorlage_anleitung">▸</span>
+      <span class="refCatLabel">🔧 Technische Anleitung</span>
+      <span class="refCatCount" id="refCatCount_vorlage_anleitung"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('vorlage','anleitung')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_vorlage_anleitung" class="refCatBody"></div>
 
-    <div class="sectionLabel" style="margin-top:18px;">📐 Einstellwerte<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage','einstellwerte')">+ Hinzufügen</span></div>
-    <div id="refListe_vorlage_einstellwerte"></div>
+    <div class="refCatHeader" onclick="toggleRefCat('vorlage_einstellwerte')">
+      <span class="refCatArrow" id="refCatArrow_vorlage_einstellwerte">▸</span>
+      <span class="refCatLabel">📐 Einstellwerte</span>
+      <span class="refCatCount" id="refCatCount_vorlage_einstellwerte"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('vorlage','einstellwerte')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_vorlage_einstellwerte" class="refCatBody"></div>
 
-    <div class="sectionLabel" style="margin-top:18px;">🔩 Anzugsmomente<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage','anzugsmomente')">+ Hinzufügen</span></div>
-    <div id="refListe_vorlage_anzugsmomente"></div>
+    <div class="refCatHeader" onclick="toggleRefCat('vorlage_anzugsmomente')">
+      <span class="refCatArrow" id="refCatArrow_vorlage_anzugsmomente">▸</span>
+      <span class="refCatLabel">🔩 Anzugsmomente</span>
+      <span class="refCatCount" id="refCatCount_vorlage_anzugsmomente"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('vorlage','anzugsmomente')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_vorlage_anzugsmomente" class="refCatBody"></div>
 
-    <div class="sectionLabel" style="margin-top:18px;">📎 Sonstiges<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage','sonstiges')">+ Hinzufügen</span></div>
-    <div id="refListe_vorlage_sonstiges"></div>
+    <div class="refCatHeader" onclick="toggleRefCat('vorlage_sonstiges')">
+      <span class="refCatArrow" id="refCatArrow_vorlage_sonstiges">▸</span>
+      <span class="refCatLabel">📎 Sonstiges</span>
+      <span class="refCatCount" id="refCatCount_vorlage_sonstiges"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('vorlage','sonstiges')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_vorlage_sonstiges" class="refCatBody"></div>
   </div>
 
   <!-- VIEW: Handbuch (Bibliothek) -->
@@ -1062,6 +1111,7 @@ function openBaugruppeDetail(bg){
   renderInstRefPhotoBox(bg);
   showView("view-bgDetail");
   loadInstanzTeile(bg.id);
+  resetRefCatStates("instanz");
   loadReferenzen("instanz", bg.id).then(function(){ renderAlleRefListen("instanz", bg.id); });
 }
 
@@ -1769,6 +1819,7 @@ function openVorlageDetail(v){
     state.vorlageTeileEdit = sortByTeilenummer(rows || []);
     renderVorlageTeileEditor();
   });
+  resetRefCatStates("vorlage");
   loadReferenzen("vorlage", v.id).then(function(){ renderAlleRefListen("vorlage", v.id); });
 }
 
@@ -2360,9 +2411,15 @@ function hbSeiteBack(){
   if(!rw){ backToHandbuchDetail(); return; }
   state.hbRueckweg = null;
   if(rw.type === "instanz"){
-    openBaugruppeDetail(rw.obj);
+    sbGet("bg_instanzen?select=*&id=eq." + rw.id).then(function(rows){
+      if(rows && rows[0]){ openBaugruppeDetail(rows[0]); }
+      else { backToHandbuchDetail(); }
+    });
   } else {
-    openVorlageDetail(rw.obj);
+    sbGet("bg_vorlagen?select=*&id=eq." + rw.id).then(function(rows){
+      if(rows && rows[0]){ openVorlageDetail(rows[0]); }
+      else { backToHandbuchDetail(); }
+    });
   }
 }
 function renderHbSeiteViewer(){
@@ -2468,13 +2525,44 @@ function renderAlleRefListen(type, id){
   });
 }
 
+function toggleRefCat(key){
+  var body = document.getElementById("refListe_" + key);
+  var arrow = document.getElementById("refCatArrow_" + key);
+  if(!body) return;
+  var open = body.classList.toggle("open");
+  if(arrow) arrow.classList.toggle("open", open);
+}
+
+function resetRefCatStates(type){
+  Object.keys(REF_KATEGORIEN).forEach(function(kat){
+    var key = type + "_" + kat;
+    var body = document.getElementById("refListe_" + key);
+    var arrow = document.getElementById("refCatArrow_" + key);
+    if(body){ body.classList.remove("open"); delete body.dataset.autoOpened; }
+    if(arrow){ arrow.classList.remove("open"); }
+  });
+}
+
 function renderRefListe(type, id, kategorie, targetElId){
   var wrap = document.getElementById(targetElId);
   if(!wrap) return;
+  var key = type + "_" + kategorie;
   var alle = state.refCache[type+"_"+id] || [];
   var refs = alle.filter(function(r){ return (r.kategorie || "sonstiges") === kategorie; });
+
+  var countEl = document.getElementById("refCatCount_" + key);
+  if(countEl) countEl.textContent = refs.length ? refs.length : "";
+
+  // Beim ersten Rendern mit Einträgen automatisch aufklappen
+  if(refs.length && !wrap.dataset.autoOpened){
+    wrap.classList.add("open");
+    var arrowAuto = document.getElementById("refCatArrow_" + key);
+    if(arrowAuto) arrowAuto.classList.add("open");
+    wrap.dataset.autoOpened = "1";
+  }
+
   if(!refs.length){
-    wrap.innerHTML = '<div class="emptyState" style="padding:14px 10px;"><p style="font-size:12px;">Keine Einträge.</p></div>';
+    wrap.innerHTML = '<div class="emptyState" style="padding:10px 8px;"><p style="font-size:11.5px;">Keine Einträge.</p></div>';
     return;
   }
   wrap.innerHTML = "";
@@ -2498,7 +2586,7 @@ function renderRefListe(type, id, kategorie, targetElId){
           : (state.aktiveVorlage.name || "Vorlage");
         var rueckweg = {
           type: type,
-          obj: type === "instanz" ? state.aktiveBaugruppe : state.aktiveVorlage,
+          id: id,
           label: herkunftLabel
         };
         openHandbuchDetail(seite.buch_id);
