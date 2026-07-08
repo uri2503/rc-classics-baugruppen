@@ -250,6 +250,7 @@
   .refItem .refTitle{font-size:13px; font-weight:700;}
   .refItem .refSource{font-size:10.5px; color:var(--text-faint); margin-top:1px;}
   .refItem .refRemove{color:var(--bad); font-size:16px; flex-shrink:0; padding:4px;}
+  .refItem .refEdit{color:var(--text-faint); font-size:15px; flex-shrink:0; padding:4px 2px;}
 
   .hbPickBook{display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:11px; padding:11px 13px; margin-bottom:8px;}
   .hbPickBook .hbPickThumb{width:34px; height:34px; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff;}
@@ -466,10 +467,11 @@
   <!-- VIEW: Handbuch-Seiten-Viewer -->
   <div class="view" id="view-hbSeite">
     <div class="backBar">
-      <div class="backBtn" onclick="backToHandbuchDetail()">←</div>
+      <div class="backBtn" id="hbSeiteBackBtn" onclick="hbSeiteBack()">←</div>
       <input type="text" class="detailTitle" id="hbSeiteTitelInput" style="background:transparent; border:none; outline:none; color:var(--text);" onblur="saveHbSeiteTitel()">
       <span style="font-family:var(--mono); font-size:11px; color:var(--text-faint);" id="hbSeiteNum"></span>
     </div>
+    <div class="sub" id="hbSeiteRueckwegHint" style="display:none; margin:-10px 0 12px;"></div>
     <div class="btnRow" style="margin-bottom:12px;">
       <button class="btn ghost" id="hbNavPrev" onclick="hbNavSeite(-1)">◀ Zurück</button>
       <button class="btn ghost" id="hbNavNext" onclick="hbNavSeite(1)">Weiter ▶</button>
@@ -477,6 +479,7 @@
     <img class="hbViewerImg" id="hbSeiteImg" src="">
     <div class="sectionLabel">OCR-Text<span id="hbSeiteOcrQuelle" style="color:var(--text-faint); font-weight:600; text-transform:none; letter-spacing:0;"></span></div>
     <div class="hbOcrTextBox" id="hbSeiteOcrText">—</div>
+    <button class="btn primary full" style="margin-bottom:10px;" onclick="openHbLinkPicker()">🔗 An Baugruppe / Vorlage verknüpfen</button>
     <button class="btn ghost full" onclick="claudeAnalyseSeite()">✨ Mit Claude Vision neu analysieren (genauer, kostenpflichtig)</button>
   </div>
 
@@ -596,6 +599,85 @@
     <div class="btnRow">
       <button class="btn ghost" onclick="backToRefPickBook()">← Anderes Buch</button>
       <button class="btn primary" onclick="saveRefVerknuepfung()">Verknüpfen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 1: Ziel-Typ) -->
+<div class="modalBg" id="modalHbLinkType">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Wohin verknüpfen?</div>
+    <div class="btnRow">
+      <button class="btn ghost full" onclick="openHbLinkFahrzeug()">🚗 Baugruppe (an einem Fahrzeug)</button>
+    </div>
+    <div class="btnRow" style="margin-top:10px;">
+      <button class="btn ghost full" onclick="openHbLinkVorlage()">📋 Katalog-Vorlage</button>
+    </div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkType')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 2a: Fahrzeug wählen) -->
+<div class="modalBg" id="modalHbLinkFahrzeug">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Fahrzeug wählen</div>
+    <div id="hbLinkFahrzeugListe" style="max-height:50vh; overflow-y:auto;"></div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkFahrzeug'); openModal('modalHbLinkType');">← Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 2b: Baugruppe wählen) -->
+<div class="modalBg" id="modalHbLinkBaugruppe">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Baugruppe wählen</div>
+    <div id="hbLinkBaugruppeListe" style="max-height:50vh; overflow-y:auto;"></div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkBaugruppe'); openModal('modalHbLinkFahrzeug');">← Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 2c: Vorlage wählen) -->
+<div class="modalBg" id="modalHbLinkVorlage">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Vorlage wählen</div>
+    <div id="hbLinkVorlageListe" style="max-height:50vh; overflow-y:auto;"></div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkVorlage'); openModal('modalHbLinkType');">← Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 3: Kategorie + Notiz) -->
+<div class="modalBg" id="modalHbLinkKategorie">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Als welche Kategorie?</div>
+    <div id="hbLinkZielInfo" style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;"></div>
+    <div class="btnRow">
+      <button class="btn ghost full" onclick="saveHbLinkVerknuepfung('anleitung')">🔧 Technische Anleitung</button>
+    </div>
+    <div class="btnRow" style="margin-top:8px;">
+      <button class="btn ghost full" onclick="saveHbLinkVerknuepfung('einstellwerte')">📐 Einstellwerte</button>
+    </div>
+    <div class="btnRow" style="margin-top:8px;">
+      <button class="btn ghost full" onclick="saveHbLinkVerknuepfung('anzugsmomente')">🔩 Anzugsmomente</button>
+    </div>
+    <div class="btnRow" style="margin-top:8px;">
+      <button class="btn ghost full" onclick="saveHbLinkVerknuepfung('sonstiges')">📎 Sonstiges</button>
+    </div>
+    <label style="margin-top:12px;">Bezeichnung (optional)</label>
+    <input type="text" id="inpHbLinkNotiz" placeholder="z.B. Anzugsmomente Vorderachse">
+    <div class="btnRow" style="margin-top:10px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkKategorie')">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -723,7 +805,8 @@ var state = {
   aktiveHbSeiteIdx: -1,
   refCache: {},
   refPickTarget: null,      // {type:'instanz'|'vorlage', id: ...}
-  refPickBuchId: null
+  refPickBuchId: null,
+  hbRueckweg: null          // {type:'instanz'|'vorlage', id:..., bg: obj / v: obj} - woher man in den Handbuch-Viewer kam
 };
 
 var STATUS_FLOW = ["zerlegt","geprueft","bestellt","wareneingang","fertigung","abgeschlossen"];
@@ -2255,13 +2338,32 @@ function ocrAlleSeiten(){
 }
 
 // ── Seiten-Viewer ──────────────────────────────────────────
-function openHbSeite(idx){
+function openHbSeite(idx, rueckweg){
   state.aktiveHbSeiteIdx = idx;
+  state.hbRueckweg = rueckweg || null;
   renderHbSeiteViewer();
   showView("view-hbSeite");
+  var hint = document.getElementById("hbSeiteRueckwegHint");
+  if(rueckweg){
+    hint.style.display = "block";
+    hint.textContent = "↩ zurück zu: " + rueckweg.label;
+  } else {
+    hint.style.display = "none";
+  }
 }
 function backToHandbuchDetail(){
+  state.hbRueckweg = null;
   showView("view-handbuchDetail");
+}
+function hbSeiteBack(){
+  var rw = state.hbRueckweg;
+  if(!rw){ backToHandbuchDetail(); return; }
+  state.hbRueckweg = null;
+  if(rw.type === "instanz"){
+    openBaugruppeDetail(rw.obj);
+  } else {
+    openVorlageDetail(rw.obj);
+  }
 }
 function renderHbSeiteViewer(){
   var buch = state.aktivesHandbuch;
@@ -2387,16 +2489,36 @@ function renderRefListe(type, id, kategorie, targetElId){
         '<div class="refTitle">' + escapeHtml(ref.notiz || (seite ? seite.titel : "Referenz")) + '</div>' +
         '<div class="refSource">' + escapeHtml(buchTitel) + (seite ? (" · S." + seite.seite_nr) : "") + '</div>' +
       '</div>' +
+      '<div class="refEdit">✎</div>' +
       '<div class="refRemove">✕</div>';
     el.querySelector(".refMain").onclick = function(){
       if(seite && seite.buch_id){
+        var herkunftLabel = type === "instanz"
+          ? ((state.aktiveBaugruppe.baugruppen_typ||"") + (state.aktiveBaugruppe.bezeichnung ? " · "+state.aktiveBaugruppe.bezeichnung : ""))
+          : (state.aktiveVorlage.name || "Vorlage");
+        var rueckweg = {
+          type: type,
+          obj: type === "instanz" ? state.aktiveBaugruppe : state.aktiveVorlage,
+          label: herkunftLabel
+        };
         openHandbuchDetail(seite.buch_id);
         setTimeout(function(){
           var seiten = state.hbSeitenCache[seite.buch_id] || [];
           var idx = seiten.findIndex(function(p){ return p.id === seite.id; });
-          if(idx > -1) openHbSeite(idx);
+          if(idx > -1) openHbSeite(idx, rueckweg);
         }, 250);
       }
+    };
+    el.querySelector(".refEdit").onclick = function(ev){
+      ev.stopPropagation();
+      var neu = prompt("Bezeichnung dieser Referenz:", ref.notiz || "");
+      if(neu === null) return;
+      neu = neu.trim();
+      sbPatch("bg_referenzen", "id=eq."+ref.id, {notiz: neu}).then(function(){
+        ref.notiz = neu;
+        renderAlleRefListen(type, id);
+        toast("✎ Referenz umbenannt", "ok");
+      });
     };
     el.querySelector(".refRemove").onclick = function(ev){
       ev.stopPropagation();
@@ -2510,6 +2632,110 @@ function saveRefVerknuepfung(){
     refPickSelectedSeiteId = null;
     toast("🔗 Referenz verknüpft", "ok");
     loadReferenzen(target.type, target.id).then(function(){ renderAlleRefListen(target.type, target.id); });
+  });
+}
+
+// ── Verknüpfen vom Handbuch aus (umgekehrter Weg) ──────────
+var hbLinkZiel = null; // {type:'instanz'|'vorlage', id, label}
+
+function openHbLinkPicker(){
+  hbLinkZiel = null;
+  openModal("modalHbLinkType");
+}
+
+function openHbLinkFahrzeug(){
+  closeModal("modalHbLinkType");
+  var wrap = document.getElementById("hbLinkFahrzeugListe");
+  if(!state.fahrzeuge.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Keine Fahrzeuge vorhanden.</p></div>';
+  } else {
+    wrap.innerHTML = "";
+    state.fahrzeuge.forEach(function(fz){
+      var el = document.createElement("div");
+      el.className = "hbPickBook";
+      el.innerHTML =
+        '<div class="hbPickThumb" style="background:var(--accent);">🚗</div>' +
+        '<div class="hbPickTit">' + escapeHtml(fz.modell) + (fz.kunde ? ' <span style="color:var(--text-faint); font-weight:400;">· '+escapeHtml(fz.kunde)+'</span>' : '') + '</div>' +
+        '<div style="color:var(--text-faint); font-size:16px;">›</div>';
+      el.onclick = function(){ openHbLinkBaugruppe(fz); };
+      wrap.appendChild(el);
+    });
+  }
+  openModal("modalHbLinkFahrzeug");
+}
+
+function openHbLinkBaugruppe(fz){
+  closeModal("modalHbLinkFahrzeug");
+  var wrap = document.getElementById("hbLinkBaugruppeListe");
+  wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Lade…</p></div>';
+  openModal("modalHbLinkBaugruppe");
+  sbGet("bg_instanzen?select=*&fahrzeug_id=eq." + fz.id + "&order=created_at.asc").then(function(rows){
+    if(!rows || !rows.length){
+      wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Keine Baugruppen an diesem Fahrzeug.</p></div>';
+      return;
+    }
+    wrap.innerHTML = "";
+    rows.forEach(function(bg){
+      var el = document.createElement("div");
+      el.className = "hbPickBook";
+      el.innerHTML =
+        '<div class="hbPickThumb" style="background:var(--accent-dim);">🔧</div>' +
+        '<div class="hbPickTit">' + escapeHtml(bg.baugruppen_typ) + (bg.bezeichnung ? ' <span style="color:var(--text-faint); font-weight:400;">· '+escapeHtml(bg.bezeichnung)+'</span>' : '') + '</div>' +
+        '<div style="color:var(--text-faint); font-size:16px;">›</div>';
+      el.onclick = function(){
+        hbLinkZiel = {type:"instanz", id:bg.id, label: fz.modell + " · " + bg.baugruppen_typ};
+        openHbLinkKategorie();
+      };
+      wrap.appendChild(el);
+    });
+  });
+}
+
+function openHbLinkVorlage(){
+  closeModal("modalHbLinkType");
+  var wrap = document.getElementById("hbLinkVorlageListe");
+  if(!state.vorlagen.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Keine Vorlagen vorhanden.</p></div>';
+  } else {
+    wrap.innerHTML = "";
+    state.vorlagen.forEach(function(v){
+      var el = document.createElement("div");
+      el.className = "hbPickBook";
+      el.innerHTML =
+        '<div class="hbPickThumb" style="background:var(--warn);">📋</div>' +
+        '<div class="hbPickTit">' + escapeHtml(v.name) + '</div>' +
+        '<div style="color:var(--text-faint); font-size:16px;">›</div>';
+      el.onclick = function(){
+        hbLinkZiel = {type:"vorlage", id:v.id, label: v.name};
+        openHbLinkKategorie();
+      };
+      wrap.appendChild(el);
+    });
+  }
+  openModal("modalHbLinkVorlage");
+}
+
+function openHbLinkKategorie(){
+  closeModal("modalHbLinkFahrzeug");
+  closeModal("modalHbLinkBaugruppe");
+  closeModal("modalHbLinkVorlage");
+  document.getElementById("hbLinkZielInfo").textContent = "Ziel: " + hbLinkZiel.label;
+  document.getElementById("inpHbLinkNotiz").value = "";
+  openModal("modalHbLinkKategorie");
+}
+
+function saveHbLinkVerknuepfung(kategorie){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pg = seiten[state.aktiveHbSeiteIdx];
+  if(!pg || !hbLinkZiel) return;
+  var notiz = document.getElementById("inpHbLinkNotiz").value.trim();
+  var body = {seite_id: pg.id, notiz: notiz, kategorie: kategorie};
+  body[hbLinkZiel.type === "instanz" ? "instanz_id" : "vorlage_id"] = hbLinkZiel.id;
+  sbPost("bg_referenzen", body, true).then(function(){
+    closeModal("modalHbLinkKategorie");
+    toast("🔗 Mit " + hbLinkZiel.label + " verknüpft", "ok");
+    hbLinkZiel = null;
   });
 }
 
