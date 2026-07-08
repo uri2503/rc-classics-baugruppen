@@ -195,6 +195,19 @@
   .editTeilFoot label.inlineChk{display:flex; align-items:center; gap:6px; margin:0; text-transform:none; font-weight:500; color:var(--text-dim); font-size:12.5px;}
   .editTeilFoot input[type=checkbox]{width:17px; height:17px; accent-color:var(--accent);}
   .removeTeilBtn{width:30px; height:30px; border-radius:8px; background:rgba(224,82,61,.1); border:1px solid rgba(224,82,61,.25); color:var(--bad); font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+
+  /* collapsible Teil-Karte (Katalog) */
+  .editTeilRow.collapsible{padding:0; overflow:hidden;}
+  .editTeilRow.collapsible .editTeilBody{padding:0 12px 12px;}
+  .teilSummary{display:flex; align-items:center; gap:10px; padding:12px; cursor:pointer;}
+  .teilSummary .tsPos{font-family:var(--mono); font-size:11px; color:var(--text-faint); width:22px; flex-shrink:0; text-align:center;}
+  .teilSummary .tsName{flex:1; min-width:0; font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .teilSummary .tsName .tsEmpty{color:var(--text-faint); font-weight:500; font-style:italic;}
+  .teilSummary .tsMenge{font-family:var(--mono); font-size:11px; color:var(--text-dim); flex-shrink:0;}
+  .teilSummary .tsWarnDot{width:7px; height:7px; border-radius:50%; background:var(--warn); flex-shrink:0;}
+  .teilSummary .tsChevron{color:var(--text-faint); font-size:13px; flex-shrink:0; transition:transform .18s ease;}
+  .editTeilRow.open .tsChevron{transform:rotate(90deg);}
+  .editTeilRow:not(.open) .editTeilBody{display:none;}
   .addTeilBtn{width:100%; padding:12px; border-radius:11px; border:1px dashed var(--line); background:transparent; color:var(--accent); font-size:13.5px; font-weight:700; margin-top:4px;}
 
   .editModeToggle{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent); padding:6px 12px; border-radius:20px; background:rgba(14,165,233,.1); border:1px solid rgba(14,165,233,.25);}
@@ -1864,6 +1877,7 @@ function closeZoom(){
   document.getElementById("zoomOverlay").classList.remove("show");
 }
 
+state.vorlageTeileOpen = state.vorlageTeileOpen || {};
 function renderVorlageTeileEditor(){
   var wrap = document.getElementById("vorlageTeileEditor");
   document.getElementById("vorlageTeilCount").textContent = state.vorlageTeileEdit.length ? (state.vorlageTeileEdit.length + " Teile") : "";
@@ -1873,23 +1887,43 @@ function renderVorlageTeileEditor(){
   }
   wrap.innerHTML = "";
   state.vorlageTeileEdit.forEach(function(t, idx){
+    var isOpen = !!state.vorlageTeileOpen[idx];
     var row = document.createElement("div");
-    row.className = "editTeilRow";
+    row.className = "editTeilRow collapsible" + (isOpen ? " open" : "");
+    var nameLabel = t.bezeichnung ? escapeHtml(t.bezeichnung) : '<span class="tsEmpty">Ohne Bezeichnung</span>';
     row.innerHTML =
-      '<div class="editTeilGrid">' +
-        '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-idx="' + idx + '">' +
-        '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-idx="' + idx + '">' +
-        '<input type="number" min="1" placeholder="Menge" value="' + (t.menge || 1) + '" data-field="menge" data-idx="' + idx + '">' +
+      '<div class="teilSummary" data-toggle-idx="' + idx + '">' +
+        '<div class="tsPos">' + escapeHtml(t.teilenummer || "–") + '</div>' +
+        '<div class="tsName">' + nameLabel + '</div>' +
+        (t.verschleissteil ? '<div class="tsWarnDot" title="Verschleißteil"></div>' : '') +
+        '<div class="tsMenge">×' + (t.menge || 1) + '</div>' +
+        '<div class="tsChevron">›</div>' +
       '</div>' +
-      '<div class="editTeilGrid2">' +
-        '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-idx="' + idx + '">' +
-        '<input type="text" placeholder="Hinweis" value="' + escapeAttr(t.hinweis) + '" data-field="hinweis" data-idx="' + idx + '">' +
-      '</div>' +
-      '<div class="editTeilFoot">' +
-        '<label class="inlineChk"><input type="checkbox" data-field="verschleissteil" data-idx="' + idx + '" ' + (t.verschleissteil ? 'checked' : '') + '> Verschleißteil</label>' +
-        '<div class="removeTeilBtn" data-idx="' + idx + '">✕</div>' +
+      '<div class="editTeilBody">' +
+        '<div class="editTeilGrid">' +
+          '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-idx="' + idx + '">' +
+          '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-idx="' + idx + '">' +
+          '<input type="number" min="1" placeholder="Menge" value="' + (t.menge || 1) + '" data-field="menge" data-idx="' + idx + '">' +
+        '</div>' +
+        '<div class="editTeilGrid2">' +
+          '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-idx="' + idx + '">' +
+          '<input type="text" placeholder="Hinweis" value="' + escapeAttr(t.hinweis) + '" data-field="hinweis" data-idx="' + idx + '">' +
+        '</div>' +
+        '<div class="editTeilFoot">' +
+          '<label class="inlineChk"><input type="checkbox" data-field="verschleissteil" data-idx="' + idx + '" ' + (t.verschleissteil ? 'checked' : '') + '> Verschleißteil</label>' +
+          '<div class="removeTeilBtn" data-idx="' + idx + '">✕</div>' +
+        '</div>' +
       '</div>';
     wrap.appendChild(row);
+  });
+
+  // Auf-/Zuklappen
+  wrap.querySelectorAll(".teilSummary").forEach(function(sum){
+    sum.onclick = function(){
+      var idx = sum.getAttribute("data-toggle-idx");
+      state.vorlageTeileOpen[idx] = !state.vorlageTeileOpen[idx];
+      sum.closest(".editTeilRow").classList.toggle("open", state.vorlageTeileOpen[idx]);
+    };
   });
 
   // Change-Handler
@@ -1901,6 +1935,26 @@ function renderVorlageTeileEditor(){
       var val = inp.type === "checkbox" ? inp.checked : (inp.type === "number" ? (parseInt(inp.value, 10) || 1) : inp.value);
       state.vorlageTeileEdit[idx][field] = val;
       saveVorlageTeil(state.vorlageTeileEdit[idx]);
+      // Zusammenfassung live aktualisieren, ohne die ganze Liste neu zu rendern (Fokus bleibt erhalten)
+      var row = inp.closest(".editTeilRow");
+      if(field === "bezeichnung"){
+        var nameEl = row.querySelector(".tsName");
+        nameEl.innerHTML = val ? escapeHtml(val) : '<span class="tsEmpty">Ohne Bezeichnung</span>';
+      } else if(field === "teilenummer"){
+        row.querySelector(".tsPos").textContent = val || "–";
+      } else if(field === "menge"){
+        row.querySelector(".tsMenge").textContent = "×" + (val || 1);
+      } else if(field === "verschleissteil"){
+        var warnDot = row.querySelector(".tsWarnDot");
+        if(val && !warnDot){
+          var d = document.createElement("div");
+          d.className = "tsWarnDot";
+          d.title = "Verschleißteil";
+          row.querySelector(".tsMenge").insertAdjacentElement("beforebegin", d);
+        } else if(!val && warnDot){
+          warnDot.remove();
+        }
+      }
     });
   });
   wrap.querySelectorAll(".removeTeilBtn").forEach(function(btn){
