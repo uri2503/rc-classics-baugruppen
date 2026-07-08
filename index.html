@@ -329,8 +329,17 @@
     <button class="btn ghost full" style="margin-top:10px;" onclick="teileZuExternUebernehmen()">🎨 In Extern-Auftrag übernehmen</button>
     <button class="btn ghost full" style="margin-top:10px;" onclick="druckeTeileliste()">🖨️ Teileliste drucken / PDF</button>
 
-    <div class="sectionLabel" style="margin-top:26px;">Referenzen aus Handbuch<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz')">+ Hinzufügen</span></div>
-    <div id="refListe"></div>
+    <div class="sectionLabel" style="margin-top:26px;">🔧 Technische Anleitung<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz','anleitung')">+ Hinzufügen</span></div>
+    <div id="refListe_instanz_anleitung"></div>
+
+    <div class="sectionLabel" style="margin-top:18px;">📐 Einstellwerte<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz','einstellwerte')">+ Hinzufügen</span></div>
+    <div id="refListe_instanz_einstellwerte"></div>
+
+    <div class="sectionLabel" style="margin-top:18px;">🔩 Anzugsmomente<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz','anzugsmomente')">+ Hinzufügen</span></div>
+    <div id="refListe_instanz_anzugsmomente"></div>
+
+    <div class="sectionLabel" style="margin-top:18px;">📎 Sonstiges<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz','sonstiges')">+ Hinzufügen</span></div>
+    <div id="refListe_instanz_sonstiges"></div>
 
     <div class="sectionLabel" style="margin-top:26px;">Notizen</div>
     <textarea id="bgNotizen" placeholder="Zustand, Besonderheiten, Maße..." onblur="saveBgNotizen()"></textarea>
@@ -398,8 +407,17 @@
     <div id="vorlageTeileEditor"></div>
     <button class="addTeilBtn" onclick="addLeeresTeil()">+ Teil hinzufügen</button>
 
-    <div class="sectionLabel" style="margin-top:26px;">Referenzen aus Handbuch<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage')">+ Hinzufügen</span></div>
-    <div id="refListeVorlage"></div>
+    <div class="sectionLabel" style="margin-top:26px;">🔧 Technische Anleitung<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage','anleitung')">+ Hinzufügen</span></div>
+    <div id="refListe_vorlage_anleitung"></div>
+
+    <div class="sectionLabel" style="margin-top:18px;">📐 Einstellwerte<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage','einstellwerte')">+ Hinzufügen</span></div>
+    <div id="refListe_vorlage_einstellwerte"></div>
+
+    <div class="sectionLabel" style="margin-top:18px;">🔩 Anzugsmomente<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage','anzugsmomente')">+ Hinzufügen</span></div>
+    <div id="refListe_vorlage_anzugsmomente"></div>
+
+    <div class="sectionLabel" style="margin-top:18px;">📎 Sonstiges<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage','sonstiges')">+ Hinzufügen</span></div>
+    <div id="refListe_vorlage_sonstiges"></div>
   </div>
 
   <!-- VIEW: Handbuch (Bibliothek) -->
@@ -961,7 +979,7 @@ function openBaugruppeDetail(bg){
   renderInstRefPhotoBox(bg);
   showView("view-bgDetail");
   loadInstanzTeile(bg.id);
-  loadReferenzen("instanz", bg.id).then(function(){ renderRefListe("instanz", bg.id, "refListe"); });
+  loadReferenzen("instanz", bg.id).then(function(){ renderAlleRefListen("instanz", bg.id); });
 }
 
 function renderStatusStrip(current){
@@ -1668,7 +1686,7 @@ function openVorlageDetail(v){
     state.vorlageTeileEdit = sortByTeilenummer(rows || []);
     renderVorlageTeileEditor();
   });
-  loadReferenzen("vorlage", v.id).then(function(){ renderRefListe("vorlage", v.id, "refListeVorlage"); });
+  loadReferenzen("vorlage", v.id).then(function(){ renderAlleRefListen("vorlage", v.id); });
 }
 
 function renderRefPhotoBox(v){
@@ -2327,6 +2345,13 @@ function claudeAnalyseSeite(){
 }
 
 // ============ REFERENZEN (Baugruppe/Vorlage ↔ Handbuch) ============
+var REF_KATEGORIEN = {
+  anleitung: {label:"Technische Anleitung", icon:"🔧"},
+  einstellwerte: {label:"Einstellwerte", icon:"📐"},
+  anzugsmomente: {label:"Anzugsmomente", icon:"🔩"},
+  sonstiges: {label:"Sonstiges", icon:"📎"}
+};
+
 function loadReferenzen(type, id){
   var filterField = type === "instanz" ? "instanz_id" : "vorlage_id";
   return sbGet("bg_referenzen?select=*,hb_seiten(id,titel,seite_nr,bild_url,buch_id,hb_buecher(titel))&" + filterField + "=eq." + id).then(function(rows){
@@ -2335,11 +2360,19 @@ function loadReferenzen(type, id){
   });
 }
 
-function renderRefListe(type, id, targetElId){
+function renderAlleRefListen(type, id){
+  Object.keys(REF_KATEGORIEN).forEach(function(kat){
+    renderRefListe(type, id, kat, "refListe_" + type + "_" + kat);
+  });
+}
+
+function renderRefListe(type, id, kategorie, targetElId){
   var wrap = document.getElementById(targetElId);
-  var refs = state.refCache[type+"_"+id] || [];
+  if(!wrap) return;
+  var alle = state.refCache[type+"_"+id] || [];
+  var refs = alle.filter(function(r){ return (r.kategorie || "sonstiges") === kategorie; });
   if(!refs.length){
-    wrap.innerHTML = '<div class="emptyState" style="padding:20px 10px;"><p style="font-size:12.5px;">Noch keine Referenzen verknüpft.</p></div>';
+    wrap.innerHTML = '<div class="emptyState" style="padding:14px 10px;"><p style="font-size:12px;">Keine Einträge.</p></div>';
     return;
   }
   wrap.innerHTML = "";
@@ -2368,7 +2401,7 @@ function renderRefListe(type, id, targetElId){
     el.querySelector(".refRemove").onclick = function(ev){
       ev.stopPropagation();
       sbDelete("bg_referenzen", "id=eq."+ref.id).then(function(){
-        loadReferenzen(type, id).then(function(){ renderRefListe(type, id, targetElId); });
+        loadReferenzen(type, id).then(function(){ renderAlleRefListen(type, id); });
         toast("Referenz entfernt", "ok");
       });
     };
@@ -2376,9 +2409,9 @@ function renderRefListe(type, id, targetElId){
   });
 }
 
-function openRefPicker(type){
+function openRefPicker(type, kategorie){
   var id = type === "instanz" ? state.aktiveBaugruppe.id : state.aktiveVorlage.id;
-  state.refPickTarget = {type: type, id: id};
+  state.refPickTarget = {type: type, id: id, kategorie: kategorie || "sonstiges"};
   document.getElementById("refPickBookSearch").value = "";
   renderRefPickBooks();
   openModal("modalRefPickBook");
@@ -2413,6 +2446,9 @@ function openRefPickPage(buchId){
   document.getElementById("refPickPageSearch").value = "";
   document.getElementById("inpRefNotiz").value = "";
   closeModal("modalRefPickBook");
+  var kat = REF_KATEGORIEN[state.refPickTarget.kategorie];
+  var titleEl = document.querySelector('#modalRefPickPage .modalTitle');
+  if(titleEl && kat) titleEl.textContent = "Seite verknüpfen · " + kat.icon + " " + kat.label;
   if(state.hbSeitenCache[buchId]){
     renderRefPickPages();
     openModal("modalRefPickPage");
@@ -2467,14 +2503,13 @@ function saveRefVerknuepfung(){
   if(!refPickSelectedSeiteId){ toast("Bitte eine Seite auswählen", "err"); return; }
   var target = state.refPickTarget;
   var notiz = document.getElementById("inpRefNotiz").value.trim();
-  var body = {seite_id: refPickSelectedSeiteId, notiz: notiz};
+  var body = {seite_id: refPickSelectedSeiteId, notiz: notiz, kategorie: target.kategorie || "sonstiges"};
   body[target.type === "instanz" ? "instanz_id" : "vorlage_id"] = target.id;
   sbPost("bg_referenzen", body, true).then(function(){
     closeModal("modalRefPickPage");
     refPickSelectedSeiteId = null;
     toast("🔗 Referenz verknüpft", "ok");
-    var targetElId = target.type === "instanz" ? "refListe" : "refListeVorlage";
-    loadReferenzen(target.type, target.id).then(function(){ renderRefListe(target.type, target.id, targetElId); });
+    loadReferenzen(target.type, target.id).then(function(){ renderAlleRefListen(target.type, target.id); });
   });
 }
 
