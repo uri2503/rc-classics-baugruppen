@@ -6,19 +6,19 @@
 <title>Baugruppen-Tracker · Riedel Classics</title>
 <style>
   :root{
-    --bg: #12141A;
-    --bg-elevated: #191c24;
-    --bg-card: #1e2129;
-    --line: #2a2e38;
-    --line-soft: #22252e;
-    --text: #eef0f4;
-    --text-dim: #9098a8;
-    --text-faint: #5c6272;
-    --accent: #0EA5E9;
-    --accent-dim: #0b7ba8;
-    --warn: #e0a72e;
-    --bad: #e0523d;
-    --ok: #3ec27a;
+    --bg: #f4f5f7;
+    --bg-elevated: #ffffff;
+    --bg-card: #ffffff;
+    --line: #dde1e8;
+    --line-soft: #e7eaef;
+    --text: #12141a;
+    --text-dim: #5c6272;
+    --text-faint: #8a90a0;
+    --accent: #0b7ba8;
+    --accent-dim: #095f83;
+    --warn: #a06a0a;
+    --bad: #c23b28;
+    --ok: #1f9457;
     --mono: 'SF Mono', 'Roboto Mono', Consolas, monospace;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -38,7 +38,7 @@
   .pinBtn.wide{grid-column:span 1;}
 
   /* header */
-  header{position:sticky; top:0; z-index:50; background:rgba(18,20,26,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft); padding:14px 18px 12px;}
+  header{position:sticky; top:0; z-index:50; background:rgba(244,245,247,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft); padding:14px 18px 12px;}
   .headRow{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
   .brand{font-size:15px; font-weight:700; letter-spacing:-.01em;}
   .brand small{display:block; font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:.14em; color:var(--text-faint); text-transform:uppercase; margin-top:2px;}
@@ -48,7 +48,7 @@
   main{padding:16px 16px 8px; max-width:720px; margin:0 auto;}
 
   /* Tabs (bottom nav) */
-  nav.tabbar{position:fixed; bottom:0; left:0; right:0; z-index:60; background:rgba(18,20,26,.96); backdrop-filter:blur(10px); border-top:1px solid var(--line-soft); display:flex; padding:6px 4px calc(6px + env(safe-area-inset-bottom));}
+  nav.tabbar{position:fixed; bottom:0; left:0; right:0; z-index:60; background:rgba(244,245,247,.96); backdrop-filter:blur(10px); border-top:1px solid var(--line-soft); display:flex; padding:6px 4px calc(6px + env(safe-area-inset-bottom));}
   .tabbtn{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; color:var(--text-faint); font-size:10px; font-weight:600; letter-spacing:.01em;}
   .tabbtn.active{color:var(--accent);}
   .tabbtn svg{width:20px; height:20px;}
