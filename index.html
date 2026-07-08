@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>Baugruppen-Tracker · Riedel Classics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root{
     --bg: #f4f5f7;
@@ -200,6 +201,59 @@
 
   .miniPhotoBtn{display:flex; align-items:center; justify-content:center; gap:6px; padding:9px; border-radius:9px; border:1px dashed var(--line); background:var(--bg-card); color:var(--text-dim); font-size:12px; font-weight:600; margin-bottom:8px;}
   .miniPhotoBtn img{width:100%; border-radius:7px; margin-top:6px;}
+
+  /* ── Handbuch ───────────────────────────────────────────── */
+  .hbSearchWrap{display:flex; align-items:center; gap:8px; background:var(--bg-card); border:1px solid var(--line); border-radius:20px; padding:0 13px; margin-bottom:12px;}
+  .hbSearchWrap input{flex:1; border:none; outline:none; background:transparent; font-size:14.5px; padding:11px 0; color:var(--text);}
+  .hbGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .hbCard{background:var(--bg-card); border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .hbCard:active{border-color:var(--accent-dim);}
+  .hbCover{aspect-ratio:3/2; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; position:relative;}
+  .hbCoverSub{font-size:9px; letter-spacing:.15em; color:rgba(255,255,255,.55); text-transform:uppercase; margin-bottom:4px;}
+  .hbCoverTit{font-size:12px; font-weight:700; color:#fff; text-align:center; line-height:1.3;}
+  .hbInfo{padding:9px 11px 11px;}
+  .hbTit{font-size:12.5px; font-weight:700; margin-bottom:2px; line-height:1.3;}
+  .hbMeta{font-size:10.5px; color:var(--text-faint);}
+  .hbEmpty{text-align:center; padding:50px 20px; color:var(--text-faint);}
+  .hbEmpty .icon{font-size:34px; margin-bottom:10px; opacity:.5;}
+
+  .hbUploadBtns{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+  .hbUbtn{border:1.5px dashed var(--line); border-radius:11px; padding:16px 10px; text-align:center; color:var(--text-dim); background:var(--bg-elevated);}
+  .hbUbtn:active{border-color:var(--accent-dim); background:rgba(11,123,168,.06);}
+  .hbUbtn .uzi{font-size:22px; margin-bottom:4px;}
+  .hbUbtn p{font-size:12px; font-weight:600;}
+  .hbUbtn small{font-size:10px; color:var(--text-faint);}
+
+  .hbPageList{display:flex; flex-direction:column; gap:8px;}
+  .hbPageItem{background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:10px; padding:10px 12px;}
+  .hbPageItem.hit{border-color:var(--accent-dim); background:rgba(11,123,168,.05);}
+  .hbPageRow{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+  .hbPageNum{font-size:9px; background:var(--text); color:var(--bg-card); padding:2px 6px; border-radius:8px; flex-shrink:0;}
+  .hbPageTit{font-weight:600; font-size:12.5px; flex:1;}
+  .hbPageThumb{width:42px; height:42px; border-radius:6px; object-fit:cover; flex-shrink:0; border:1px solid var(--line);}
+  .hbPageExcerpt{font-size:11px; color:var(--text-dim); line-height:1.5;}
+  .hbPageExcerpt mark{background:#ffe28a; border-radius:2px; padding:0 2px;}
+
+  .hbOcrBtn{display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:9px; background:var(--bg-elevated); border:1px solid var(--line); cursor:pointer; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:10px;}
+  .hbOcrBtn.run{border-color:var(--accent); color:var(--accent);}
+  .hbSpin{width:12px; height:12px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:hbspin .7s linear infinite; display:none;}
+  .hbOcrBtn.run .hbSpin{display:block;}
+  @keyframes hbspin{to{transform:rotate(360deg);}}
+
+  .hbViewerImg{width:100%; border-radius:10px; margin-bottom:12px;}
+  .hbOcrTextBox{background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:10px; padding:12px; font-size:13px; line-height:1.55; white-space:pre-wrap; color:var(--text-dim); margin-bottom:12px;}
+
+  /* Referenzen (an Baugruppe/Vorlage) */
+  .refItem{display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:11px; padding:11px 13px; margin-bottom:8px;}
+  .refItem .refIcon{font-size:18px; flex-shrink:0;}
+  .refItem .refMain{flex:1; min-width:0;}
+  .refItem .refTitle{font-size:13px; font-weight:700;}
+  .refItem .refSource{font-size:10.5px; color:var(--text-faint); margin-top:1px;}
+  .refItem .refRemove{color:var(--bad); font-size:16px; flex-shrink:0; padding:4px;}
+
+  .hbPickBook{display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:11px; padding:11px 13px; margin-bottom:8px;}
+  .hbPickBook .hbPickThumb{width:34px; height:34px; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff;}
+  .hbPickBook .hbPickTit{flex:1; font-size:13px; font-weight:600;}
 </style>
 </head>
 <body>
@@ -275,6 +329,9 @@
     <button class="btn ghost full" style="margin-top:10px;" onclick="teileZuExternUebernehmen()">🎨 In Extern-Auftrag übernehmen</button>
     <button class="btn ghost full" style="margin-top:10px;" onclick="druckeTeileliste()">🖨️ Teileliste drucken / PDF</button>
 
+    <div class="sectionLabel" style="margin-top:26px;">Referenzen aus Handbuch<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('instanz')">+ Hinzufügen</span></div>
+    <div id="refListe"></div>
+
     <div class="sectionLabel" style="margin-top:26px;">Notizen</div>
     <textarea id="bgNotizen" placeholder="Zustand, Besonderheiten, Maße..." onblur="saveBgNotizen()"></textarea>
   </div>
@@ -340,6 +397,69 @@
     <div class="sectionLabel">Teile <span id="vorlageTeilCount" style="color:var(--text-faint); font-weight:600;"></span></div>
     <div id="vorlageTeileEditor"></div>
     <button class="addTeilBtn" onclick="addLeeresTeil()">+ Teil hinzufügen</button>
+
+    <div class="sectionLabel" style="margin-top:26px;">Referenzen aus Handbuch<span style="color:var(--accent); cursor:pointer;" onclick="openRefPicker('vorlage')">+ Hinzufügen</span></div>
+    <div id="refListeVorlage"></div>
+  </div>
+
+  <!-- VIEW: Handbuch (Bibliothek) -->
+  <div class="view" id="view-handbuch">
+    <h2 class="viewTitle">Handbuch</h2>
+    <div class="sub">Werkstatthandbücher &amp; Tabellenbücher</div>
+    <div class="hbSearchWrap">
+      <span style="color:var(--text-faint);">🔍</span>
+      <input type="text" id="hbSearchInput" placeholder="Bücher durchsuchen…" oninput="renderHandbuchListe()">
+    </div>
+    <div id="handbuchListe"></div>
+    <button class="btn primary full" style="margin-top:14px;" onclick="openNeuesHandbuch()">+ Neues Handbuch</button>
+  </div>
+
+  <!-- VIEW: Handbuch-Detail (Seiten) -->
+  <div class="view" id="view-handbuchDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="goTo('handbuch')">←</div>
+      <div class="detailTitle" id="hbDetailTitle">Handbuch</div>
+    </div>
+    <div class="card" id="hbInfoCard"></div>
+
+    <div class="hbSearchWrap">
+      <span style="color:var(--text-faint);">🔍</span>
+      <input type="text" id="hbPageSearchInput" placeholder="Seiten durchsuchen…" oninput="renderHandbuchSeiten()">
+    </div>
+
+    <div class="hbOcrBtn" id="hbOcrAllBtn" onclick="ocrAlleSeiten()">
+      <div class="hbSpin"></div>
+      <span id="hbOcrAllLbl">⚡ Alle Seiten OCR-indexieren (Tesseract)</span>
+    </div>
+
+    <div class="hbPageList" id="hbPageListe"></div>
+    <div class="emptyState" id="hbPageNone" style="display:none;"><p>Keine Treffer.</p></div>
+
+    <div class="btnRow" style="margin-top:16px;">
+      <button class="btn ghost" onclick="document.getElementById('hbAddFotoInput').click()">📷 Fotos</button>
+      <button class="btn ghost" onclick="document.getElementById('hbAddPdfInput').click()">📄 PDF</button>
+    </div>
+    <button class="btn danger full" style="margin-top:10px;" onclick="loescheHandbuch()">🗑 Handbuch löschen</button>
+    <input type="file" accept="image/*" multiple id="hbAddFotoInput" style="display:none" onchange="hbSeitenAusFotos(this.files)">
+    <input type="file" accept="application/pdf" id="hbAddPdfInput" style="display:none" onchange="hbSeitenAusPdf(this.files[0])">
+    <div id="hbUploadStatus" style="margin-top:8px; font-size:12px; color:var(--text-dim); font-weight:600;"></div>
+  </div>
+
+  <!-- VIEW: Handbuch-Seiten-Viewer -->
+  <div class="view" id="view-hbSeite">
+    <div class="backBar">
+      <div class="backBtn" onclick="backToHandbuchDetail()">←</div>
+      <input type="text" class="detailTitle" id="hbSeiteTitelInput" style="background:transparent; border:none; outline:none; color:var(--text);" onblur="saveHbSeiteTitel()">
+      <span style="font-family:var(--mono); font-size:11px; color:var(--text-faint);" id="hbSeiteNum"></span>
+    </div>
+    <div class="btnRow" style="margin-bottom:12px;">
+      <button class="btn ghost" id="hbNavPrev" onclick="hbNavSeite(-1)">◀ Zurück</button>
+      <button class="btn ghost" id="hbNavNext" onclick="hbNavSeite(1)">Weiter ▶</button>
+    </div>
+    <img class="hbViewerImg" id="hbSeiteImg" src="">
+    <div class="sectionLabel">OCR-Text<span id="hbSeiteOcrQuelle" style="color:var(--text-faint); font-weight:600; text-transform:none; letter-spacing:0;"></span></div>
+    <div class="hbOcrTextBox" id="hbSeiteOcrText">—</div>
+    <button class="btn ghost full" onclick="claudeAnalyseSeite()">✨ Mit Claude Vision neu analysieren (genauer, kostenpflichtig)</button>
   </div>
 
 </main>
@@ -358,6 +478,10 @@
   <div class="tabbtn" data-tab="vorlagen" onclick="goTo('vorlagen')">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
     Katalog
+  </div>
+  <div class="tabbtn" data-tab="handbuch" onclick="goTo('handbuch')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg>
+    Handbuch
   </div>
 </nav>
 
@@ -395,6 +519,65 @@
     <div class="btnRow">
       <button class="btn ghost" onclick="closeModal('modalNeueVorlage')">Abbrechen</button>
       <button class="btn primary" onclick="saveNeueVorlage()">Anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Neues Handbuch -->
+<div class="modalBg" id="modalNeuesHandbuch">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Neues Handbuch</div>
+    <label>Titel</label>
+    <input type="text" id="inpHbTitel" placeholder="z.B. W111 Werkstatthandbuch">
+    <label>Kategorie</label>
+    <select id="inpHbKategorie">
+      <option>Werkstatthandbuch</option>
+      <option>Tabellenbuch</option>
+      <option>Ersatzteilkatalog</option>
+      <option>Schaltplan</option>
+      <option>Sonstiges</option>
+    </select>
+    <label>Jahr / Ausgabe (optional)</label>
+    <input type="text" id="inpHbJahr" placeholder="z.B. 1968">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalNeuesHandbuch')">Abbrechen</button>
+      <button class="btn primary" onclick="saveNeuesHandbuch()">Anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Referenz aus Handbuch verknüpfen (Schritt 1: Buch wählen) -->
+<div class="modalBg" id="modalRefPickBook">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Handbuch wählen</div>
+    <div class="hbSearchWrap">
+      <span style="color:var(--text-faint);">🔍</span>
+      <input type="text" id="refPickBookSearch" placeholder="Bücher durchsuchen…" oninput="renderRefPickBooks()">
+    </div>
+    <div id="refPickBookListe" style="max-height:50vh; overflow-y:auto;"></div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalRefPickBook')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Referenz aus Handbuch verknüpfen (Schritt 2: Seite wählen + Notiz) -->
+<div class="modalBg" id="modalRefPickPage">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Seite verknüpfen</div>
+    <div class="hbSearchWrap">
+      <span style="color:var(--text-faint);">🔍</span>
+      <input type="text" id="refPickPageSearch" placeholder="Seiten durchsuchen…" oninput="renderRefPickPages()">
+    </div>
+    <div id="refPickPageListe" style="max-height:38vh; overflow-y:auto; margin-bottom:12px;"></div>
+    <label>Bezeichnung dieser Referenz</label>
+    <input type="text" id="inpRefNotiz" placeholder="z.B. Anzugsmomente Vorderachse">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="backToRefPickBook()">← Anderes Buch</button>
+      <button class="btn primary" onclick="saveRefVerknuepfung()">Verknüpfen</button>
     </div>
   </div>
 </div>
@@ -515,7 +698,14 @@ var state = {
   aktiveBaugruppe: null,
   aktiveBestellung: null,
   instanzTeileCache: {},
-  bestellungen: []
+  bestellungen: [],
+  handbuecher: [],
+  aktivesHandbuch: null,
+  hbSeitenCache: {},
+  aktiveHbSeiteIdx: -1,
+  refCache: {},
+  refPickTarget: null,      // {type:'instanz'|'vorlage', id: ...}
+  refPickBuchId: null
 };
 
 var STATUS_FLOW = ["zerlegt","geprueft","bestellt","wareneingang","fertigung","abgeschlossen"];
@@ -608,13 +798,14 @@ function handlePinKey(k){
 function goTo(tab){
   document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
   document.querySelectorAll(".tabbtn").forEach(function(t){ t.classList.remove("active"); });
-  var map = {fahrzeuge:"view-fahrzeuge", bestellungen:"view-bestellungen", vorlagen:"view-vorlagen"};
+  var map = {fahrzeuge:"view-fahrzeuge", bestellungen:"view-bestellungen", vorlagen:"view-vorlagen", handbuch:"view-handbuch"};
   document.getElementById(map[tab]).classList.add("active");
   var tb = document.querySelector('.tabbtn[data-tab="'+tab+'"]');
   if(tb) tb.classList.add("active");
   document.getElementById("fabAdd").style.display = (tab === "fahrzeuge") ? "flex" : "none";
   if(tab === "bestellungen") loadBestellungen();
   if(tab === "vorlagen") renderVorlagenView();
+  if(tab === "handbuch") loadHandbuecher();
 }
 function showView(id){
   document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
@@ -633,6 +824,7 @@ function toast(msg, type){
 function initApp(){
   loadFahrzeuge();
   loadVorlagen();
+  loadHandbuecher();
   updateHeaderStats();
 }
 
@@ -769,6 +961,7 @@ function openBaugruppeDetail(bg){
   renderInstRefPhotoBox(bg);
   showView("view-bgDetail");
   loadInstanzTeile(bg.id);
+  loadReferenzen("instanz", bg.id).then(function(){ renderRefListe("instanz", bg.id, "refListe"); });
 }
 
 function renderStatusStrip(current){
@@ -1475,6 +1668,7 @@ function openVorlageDetail(v){
     state.vorlageTeileEdit = sortByTeilenummer(rows || []);
     renderVorlageTeileEditor();
   });
+  loadReferenzen("vorlage", v.id).then(function(){ renderRefListe("vorlage", v.id, "refListeVorlage"); });
 }
 
 function renderRefPhotoBox(v){
@@ -1712,6 +1906,575 @@ function saveBgNotizen(){
   var val = document.getElementById("bgNotizen").value;
   sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {notizen: val}).then(function(){
     state.aktiveBaugruppe.notizen = val;
+  });
+}
+
+// ============ HANDBUCH ============
+var HB_FARBEN = ["#0b7ba8","#c8391a","#a06a0a","#1f9457","#6b4fa0","#3a4a5c"];
+
+function loadHandbuecher(){
+  sbGet("hb_buecher?select=*&order=created_at.desc").then(function(rows){
+    state.handbuecher = rows || [];
+    renderHandbuchListe();
+  });
+}
+
+function renderHandbuchListe(){
+  var wrap = document.getElementById("handbuchListe");
+  var q = (document.getElementById("hbSearchInput").value || "").toLowerCase().trim();
+  var list = state.handbuecher.filter(function(b){
+    return !q || (b.titel||"").toLowerCase().indexOf(q) > -1 || (b.kategorie||"").toLowerCase().indexOf(q) > -1;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div class="hbEmpty"><div class="icon">📖</div><p>Noch keine Handbücher.</p><p>Lege dein erstes Handbuch an.</p></div>';
+    return;
+  }
+  var grid = document.createElement("div");
+  grid.className = "hbGrid";
+  list.forEach(function(b){
+    var idx = state.handbuecher.indexOf(b);
+    var farbe = b.farbe || HB_FARBEN[idx % HB_FARBEN.length];
+    var card = document.createElement("div");
+    card.className = "hbCard";
+    card.innerHTML =
+      '<div class="hbCover" style="background:' + farbe + ';">' +
+        '<div class="hbCoverSub">' + escapeHtml(b.kategorie || "Handbuch") + '</div>' +
+        '<div class="hbCoverTit">' + escapeHtml(b.titel) + '</div>' +
+      '</div>' +
+      '<div class="hbInfo">' +
+        '<div class="hbTit">' + escapeHtml(b.titel) + '</div>' +
+        '<div class="hbMeta">' + (b.seiten_anzahl||0) + ' Seiten' + (b.jahr ? " · " + escapeHtml(b.jahr) : "") + '</div>' +
+      '</div>';
+    card.onclick = function(){ openHandbuchDetail(b.id); };
+    grid.appendChild(card);
+  });
+  wrap.innerHTML = "";
+  wrap.appendChild(grid);
+}
+
+function openNeuesHandbuch(){
+  document.getElementById("inpHbTitel").value = "";
+  document.getElementById("inpHbKategorie").value = "Werkstatthandbuch";
+  document.getElementById("inpHbJahr").value = "";
+  openModal("modalNeuesHandbuch");
+}
+
+function saveNeuesHandbuch(){
+  var titel = document.getElementById("inpHbTitel").value.trim();
+  if(!titel){ toast("Bitte Titel eingeben", "err"); return; }
+  var body = {
+    titel: titel,
+    kategorie: document.getElementById("inpHbKategorie").value,
+    jahr: document.getElementById("inpHbJahr").value.trim(),
+    farbe: HB_FARBEN[state.handbuecher.length % HB_FARBEN.length]
+  };
+  sbPost("hb_buecher", body, true).then(function(res){
+    closeModal("modalNeuesHandbuch");
+    if(res && res[0]){
+      state.handbuecher.unshift(res[0]);
+      renderHandbuchListe();
+      openHandbuchDetail(res[0].id);
+      toast("📖 Handbuch angelegt", "ok");
+    }
+  });
+}
+
+function openHandbuchDetail(id){
+  var buch = state.handbuecher.find(function(b){ return b.id === id; });
+  if(!buch) return;
+  state.aktivesHandbuch = buch;
+  document.getElementById("hbDetailTitle").textContent = buch.titel;
+  document.getElementById("hbInfoCard").innerHTML =
+    '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+      '<div><div style="font-weight:700; font-size:15px;">' + escapeHtml(buch.titel) + '</div>' +
+      '<div style="font-size:12px; color:var(--text-dim); margin-top:3px;">' + escapeHtml(buch.kategorie||"") + (buch.jahr ? " · " + escapeHtml(buch.jahr) : "") + '</div></div>' +
+      '<div style="font-family:var(--mono); font-size:11px; color:var(--text-faint); text-align:right;">' + (buch.seiten_anzahl||0) + ' Seiten<br>' + (buch.ocr_anzahl||0) + ' indexiert</div>' +
+    '</div>';
+  document.getElementById("hbPageSearchInput").value = "";
+  document.getElementById("hbUploadStatus").textContent = "";
+  showView("view-handbuchDetail");
+  loadHandbuchSeiten(id);
+}
+
+function loadHandbuchSeiten(buchId){
+  sbGet("hb_seiten?select=*&buch_id=eq." + buchId + "&order=seite_nr.asc").then(function(rows){
+    state.hbSeitenCache[buchId] = rows || [];
+    renderHandbuchSeiten();
+  });
+}
+
+function renderHandbuchSeiten(){
+  var buch = state.aktivesHandbuch;
+  if(!buch) return;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var q = (document.getElementById("hbPageSearchInput").value || "").toLowerCase().trim();
+  var list = document.getElementById("hbPageListe");
+  var none = document.getElementById("hbPageNone");
+  var gefiltert = seiten.filter(function(p){
+    return !q || (p.titel||"").toLowerCase().indexOf(q) > -1 || (p.ocr_text||"").toLowerCase().indexOf(q) > -1;
+  });
+  if(!gefiltert.length){
+    list.innerHTML = "";
+    none.style.display = "block";
+    return;
+  }
+  none.style.display = "none";
+  list.innerHTML = "";
+  gefiltert.forEach(function(pg){
+    var hit = q && (pg.ocr_text||"").toLowerCase().indexOf(q) > -1;
+    var excerpt = "";
+    if(q && pg.ocr_text){
+      var low = pg.ocr_text.toLowerCase();
+      var i = low.indexOf(q);
+      if(i > -1){
+        var s = Math.max(0, i-40), e = Math.min(pg.ocr_text.length, i+q.length+70);
+        var raw = pg.ocr_text.slice(s,e);
+        excerpt = escapeHtml(raw).replace(new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","gi"), "<mark>$1</mark>");
+        if(s>0) excerpt = "…" + excerpt;
+        if(e<pg.ocr_text.length) excerpt += "…";
+      }
+    } else if(pg.ocr_text){
+      excerpt = escapeHtml(pg.ocr_text.slice(0,80)) + (pg.ocr_text.length>80 ? "…" : "");
+    }
+    var el = document.createElement("div");
+    el.className = "hbPageItem" + (hit ? " hit" : "");
+    el.innerHTML =
+      '<div class="hbPageRow">' +
+        '<span class="hbPageNum">S.' + pg.seite_nr + '</span>' +
+        '<span class="hbPageTit">' + escapeHtml(pg.titel || ("Seite "+pg.seite_nr)) + '</span>' +
+        (pg.bild_url ? '<img class="hbPageThumb" src="'+pg.bild_url+'">' : '') +
+      '</div>' +
+      (excerpt ? '<div class="hbPageExcerpt">' + excerpt + '</div>' : '');
+    el.onclick = function(){ openHbSeite(seiten.indexOf(pg)); };
+    list.appendChild(el);
+  });
+}
+
+function hbSeitenAusFotos(files){
+  var buch = state.aktivesHandbuch;
+  if(!buch || !files.length) return;
+  document.getElementById("hbUploadStatus").textContent = "⏳ 0/" + files.length + " Fotos werden hochgeladen…";
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var startNr = seiten.length;
+  var done = 0;
+  var arr = Array.from(files);
+  function next(i){
+    if(i >= arr.length){
+      document.getElementById("hbUploadStatus").textContent = "✓ " + done + " Seiten hinzugefügt";
+      document.getElementById("hbAddFotoInput").value = "";
+      updateHbSeitenzahl(buch.id);
+      return;
+    }
+    komprimiereBild(arr[i], function(dataUrl){
+      hbUploadBild(dataUrl, buch.id, function(url){
+        var titel = arr[i].name.replace(/\.[^.]+$/, "");
+        sbPost("hb_seiten", {buch_id:buch.id, seite_nr:startNr+i+1, titel:titel, bild_url:url}, true).then(function(){
+          done++;
+          document.getElementById("hbUploadStatus").textContent = "⏳ " + done + "/" + arr.length + " Fotos werden hochgeladen…";
+          next(i+1);
+        });
+      });
+    });
+  }
+  next(0);
+}
+
+function hbSeitenAusPdf(file){
+  var buch = state.aktivesHandbuch;
+  if(!buch || !file) return;
+  document.getElementById("hbUploadStatus").textContent = "⏳ PDF wird verarbeitet…";
+  pdfToImages(file, function(cur, total){
+    document.getElementById("hbUploadStatus").textContent = "⏳ PDF Seite " + cur + "/" + total + "…";
+  }).then(function(images){
+    var seiten = state.hbSeitenCache[buch.id] || [];
+    var startNr = seiten.length;
+    var baseName = file.name.replace(/\.pdf$/i, "");
+    var done = 0;
+    function next(i){
+      if(i >= images.length){
+        document.getElementById("hbUploadStatus").textContent = "✓ " + done + " PDF-Seiten importiert";
+        document.getElementById("hbAddPdfInput").value = "";
+        updateHbSeitenzahl(buch.id);
+        return;
+      }
+      hbUploadBild(images[i], buch.id, function(url){
+        sbPost("hb_seiten", {buch_id:buch.id, seite_nr:startNr+i+1, titel:baseName+" S."+(i+1), bild_url:url}, true).then(function(){
+          done++;
+          document.getElementById("hbUploadStatus").textContent = "⏳ " + done + "/" + images.length + " PDF-Seiten importiert…";
+          next(i+1);
+        });
+      });
+    }
+    next(0);
+  }).catch(function(){
+    document.getElementById("hbUploadStatus").textContent = "⚠️ PDF konnte nicht verarbeitet werden";
+  });
+}
+
+function pdfToImages(file, progressCb){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var typedArray = new Uint8Array(ev.target.result);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      pdfjsLib.getDocument(typedArray).promise.then(function(pdf){
+        var images = [];
+        function renderPage(n){
+          if(n > pdf.numPages){ resolve(images); return; }
+          pdf.getPage(n).then(function(page){
+            var viewport = page.getViewport({scale: 1.5});
+            var canvas = document.createElement("canvas");
+            canvas.width = viewport.width; canvas.height = viewport.height;
+            var ctx = canvas.getContext("2d");
+            page.render({canvasContext: ctx, viewport: viewport}).promise.then(function(){
+              images.push(canvas.toDataURL("image/jpeg", 0.8));
+              if(progressCb) progressCb(n, pdf.numPages);
+              renderPage(n+1);
+            });
+          });
+        }
+        renderPage(1);
+      }).catch(reject);
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function hbUploadBild(dataUrl, buchId, callback){
+  var mediaType = dataUrl.split(";")[0].split(":")[1];
+  var ext = mediaType === "image/png" ? "png" : "jpg";
+  var base64 = dataUrl.split(",")[1];
+  var byteChars = atob(base64);
+  var byteNumbers = new Array(byteChars.length);
+  for(var i=0;i<byteChars.length;i++){ byteNumbers[i] = byteChars.charCodeAt(i); }
+  var blob = new Blob([new Uint8Array(byteNumbers)], {type: mediaType});
+  var filename = buchId + "/" + Date.now() + "_" + Math.round(Math.random()*10000) + "." + ext;
+  fetch(SUPABASE_URL + "/storage/v1/object/handbuch-seiten/" + filename, {
+    method: "POST",
+    headers: {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": mediaType},
+    body: blob
+  }).then(function(r){
+    var publicUrl = SUPABASE_URL + "/storage/v1/object/public/handbuch-seiten/" + filename;
+    callback(publicUrl);
+  }).catch(function(){
+    toast("⚠️ Upload fehlgeschlagen", "err");
+  });
+}
+
+function updateHbSeitenzahl(buchId){
+  sbGet("hb_seiten?select=id,ocr_text&buch_id=eq."+buchId).then(function(rows){
+    var anz = (rows||[]).length;
+    var ocrAnz = (rows||[]).filter(function(r){ return r.ocr_text; }).length;
+    sbPatch("hb_buecher", "id=eq."+buchId, {seiten_anzahl: anz, ocr_anzahl: ocrAnz}).then(function(){
+      var buch = state.handbuecher.find(function(b){ return b.id === buchId; });
+      if(buch){ buch.seiten_anzahl = anz; buch.ocr_anzahl = ocrAnz; }
+      loadHandbuchSeiten(buchId);
+    });
+  });
+}
+
+function loescheHandbuch(){
+  var buch = state.aktivesHandbuch;
+  if(!buch) return;
+  if(!confirm('"' + buch.titel + '" wirklich löschen? Alle Seiten gehen verloren.')) return;
+  sbDelete("hb_buecher", "id=eq."+buch.id).then(function(){
+    state.handbuecher = state.handbuecher.filter(function(b){ return b.id !== buch.id; });
+    delete state.hbSeitenCache[buch.id];
+    goTo("handbuch");
+    toast("🗑 Handbuch gelöscht", "ok");
+  });
+}
+
+// ── Tesseract OCR ──────────────────────────────────────────
+var tesseractReady = false;
+function initTesseract(){
+  return new Promise(function(resolve){
+    if(typeof Tesseract !== "undefined"){ tesseractReady = true; resolve(); return; }
+    var s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js";
+    s.onload = function(){ tesseractReady = true; resolve(); };
+    s.onerror = function(){ resolve(); };
+    document.head.appendChild(s);
+  });
+}
+function runTesseractOCR(imgUrl){
+  return initTesseract().then(function(){
+    if(typeof Tesseract === "undefined") return "";
+    return Tesseract.recognize(imgUrl, "deu+eng", {logger: function(){}}).then(function(r){
+      return (r.data.text || "").trim();
+    }).catch(function(){ return ""; });
+  });
+}
+
+function ocrAlleSeiten(){
+  var buch = state.aktivesHandbuch;
+  if(!buch) return;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pending = seiten.filter(function(p){ return !p.ocr_text && p.bild_url; });
+  if(!pending.length){ toast("✓ Alle Seiten bereits indexiert", "ok"); return; }
+  var btn = document.getElementById("hbOcrAllBtn");
+  btn.classList.add("run");
+  var i = 0;
+  function next(){
+    if(i >= pending.length){
+      btn.classList.remove("run");
+      document.getElementById("hbOcrAllLbl").textContent = "✓ " + pending.length + " Seiten indexiert";
+      updateHbSeitenzahl(buch.id);
+      toast("⚡ " + pending.length + " Seiten indexiert", "ok");
+      return;
+    }
+    document.getElementById("hbOcrAllLbl").textContent = "OCR " + (i+1) + "/" + pending.length + "…";
+    runTesseractOCR(pending[i].bild_url).then(function(text){
+      sbPatch("hb_seiten", "id=eq."+pending[i].id, {ocr_text: text, ocr_quelle: "tesseract"}).then(function(){
+        pending[i].ocr_text = text;
+        i++;
+        next();
+      });
+    });
+  }
+  next();
+}
+
+// ── Seiten-Viewer ──────────────────────────────────────────
+function openHbSeite(idx){
+  state.aktiveHbSeiteIdx = idx;
+  renderHbSeiteViewer();
+  showView("view-hbSeite");
+}
+function backToHandbuchDetail(){
+  showView("view-handbuchDetail");
+}
+function renderHbSeiteViewer(){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pg = seiten[state.aktiveHbSeiteIdx];
+  if(!pg) return;
+  document.getElementById("hbSeiteTitelInput").value = pg.titel || ("Seite " + pg.seite_nr);
+  document.getElementById("hbSeiteNum").textContent = "S." + pg.seite_nr + " · " + (state.aktiveHbSeiteIdx+1) + "/" + seiten.length;
+  document.getElementById("hbSeiteImg").src = pg.bild_url || "";
+  document.getElementById("hbSeiteOcrText").textContent = pg.ocr_text || "—";
+  document.getElementById("hbSeiteOcrQuelle").textContent = pg.ocr_quelle ? ("· " + pg.ocr_quelle) : "";
+  document.getElementById("hbNavPrev").disabled = state.aktiveHbSeiteIdx === 0;
+  document.getElementById("hbNavNext").disabled = state.aktiveHbSeiteIdx >= seiten.length-1;
+}
+function hbNavSeite(d){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  state.aktiveHbSeiteIdx = Math.max(0, Math.min(seiten.length-1, state.aktiveHbSeiteIdx+d));
+  renderHbSeiteViewer();
+}
+function saveHbSeiteTitel(){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pg = seiten[state.aktiveHbSeiteIdx];
+  if(!pg) return;
+  var val = document.getElementById("hbSeiteTitelInput").value;
+  sbPatch("hb_seiten", "id=eq."+pg.id, {titel: val}).then(function(){
+    pg.titel = val;
+    renderHandbuchSeiten();
+  });
+}
+
+function claudeAnalyseSeite(){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pg = seiten[state.aktiveHbSeiteIdx];
+  if(!pg || !pg.bild_url) return;
+  document.getElementById("hbSeiteOcrText").textContent = "⏳ Claude Vision analysiert die Seite…";
+  fetch(pg.bild_url).then(function(r){ return r.blob(); }).then(function(blob){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var dataUrl = ev.target.result;
+      var base64 = dataUrl.split(",")[1];
+      var mediaType = dataUrl.split(";")[0].split(":")[1];
+      var prompt = "Extrahiere den gesamten lesbaren Text dieser Werkstatthandbuch-/Tabellenbuch-Seite vollständig und wortgetreu. " +
+        "Falls es sich um eine Tabelle handelt (z.B. Anzugsmomente, Einstellwerte, Toleranzen), gib sie strukturiert zeilenweise wieder " +
+        "(Bezeichnung: Wert mit Einheit). Keine Interpretation, keine Zusammenfassung — nur den reinen Inhalt der Seite, auf Deutsch falls die Seite deutsch ist.";
+      fetch(CLAUDE_PROXY_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1500,
+          messages: [{
+            role: "user",
+            content: [
+              {type:"image", source:{type:"base64", media_type: mediaType, data: base64}},
+              {type:"text", text: prompt}
+            ]
+          }]
+        })
+      }).then(function(r){ return r.json(); })
+        .then(function(data){
+          var textBlocks = (data.content || []).filter(function(b){ return b.type === "text"; }).map(function(b){ return b.text; });
+          var result = textBlocks.join("\n") || "Keine Erkennung möglich.";
+          sbPatch("hb_seiten", "id=eq."+pg.id, {ocr_text: result, ocr_quelle: "claude"}).then(function(){
+            pg.ocr_text = result;
+            pg.ocr_quelle = "claude";
+            document.getElementById("hbSeiteOcrText").textContent = result;
+            document.getElementById("hbSeiteOcrQuelle").textContent = "· claude";
+            updateHbSeitenzahl(buch.id);
+            toast("✨ Mit Claude Vision analysiert", "ok");
+          });
+        }).catch(function(){
+          document.getElementById("hbSeiteOcrText").textContent = pg.ocr_text || "—";
+          toast("⚠️ Analyse fehlgeschlagen", "err");
+        });
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ============ REFERENZEN (Baugruppe/Vorlage ↔ Handbuch) ============
+function loadReferenzen(type, id){
+  var filterField = type === "instanz" ? "instanz_id" : "vorlage_id";
+  return sbGet("bg_referenzen?select=*,hb_seiten(id,titel,seite_nr,bild_url,buch_id,hb_buecher(titel))&" + filterField + "=eq." + id).then(function(rows){
+    state.refCache[type+"_"+id] = rows || [];
+    return rows || [];
+  });
+}
+
+function renderRefListe(type, id, targetElId){
+  var wrap = document.getElementById(targetElId);
+  var refs = state.refCache[type+"_"+id] || [];
+  if(!refs.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:20px 10px;"><p style="font-size:12.5px;">Noch keine Referenzen verknüpft.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  refs.forEach(function(ref){
+    var seite = ref.hb_seiten;
+    var buchTitel = seite && seite.hb_buecher ? seite.hb_buecher.titel : "";
+    var el = document.createElement("div");
+    el.className = "refItem";
+    el.innerHTML =
+      '<div class="refIcon">📖</div>' +
+      '<div class="refMain">' +
+        '<div class="refTitle">' + escapeHtml(ref.notiz || (seite ? seite.titel : "Referenz")) + '</div>' +
+        '<div class="refSource">' + escapeHtml(buchTitel) + (seite ? (" · S." + seite.seite_nr) : "") + '</div>' +
+      '</div>' +
+      '<div class="refRemove">✕</div>';
+    el.querySelector(".refMain").onclick = function(){
+      if(seite && seite.buch_id){
+        openHandbuchDetail(seite.buch_id);
+        setTimeout(function(){
+          var seiten = state.hbSeitenCache[seite.buch_id] || [];
+          var idx = seiten.findIndex(function(p){ return p.id === seite.id; });
+          if(idx > -1) openHbSeite(idx);
+        }, 250);
+      }
+    };
+    el.querySelector(".refRemove").onclick = function(ev){
+      ev.stopPropagation();
+      sbDelete("bg_referenzen", "id=eq."+ref.id).then(function(){
+        loadReferenzen(type, id).then(function(){ renderRefListe(type, id, targetElId); });
+        toast("Referenz entfernt", "ok");
+      });
+    };
+    wrap.appendChild(el);
+  });
+}
+
+function openRefPicker(type){
+  var id = type === "instanz" ? state.aktiveBaugruppe.id : state.aktiveVorlage.id;
+  state.refPickTarget = {type: type, id: id};
+  document.getElementById("refPickBookSearch").value = "";
+  renderRefPickBooks();
+  openModal("modalRefPickBook");
+}
+
+function renderRefPickBooks(){
+  var wrap = document.getElementById("refPickBookListe");
+  var q = (document.getElementById("refPickBookSearch").value || "").toLowerCase().trim();
+  var list = state.handbuecher.filter(function(b){
+    return !q || (b.titel||"").toLowerCase().indexOf(q) > -1;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:20px 10px;"><p style="font-size:12.5px;">Keine Handbücher gefunden. Lege zuerst eins im Handbuch-Tab an.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  list.forEach(function(b, idx){
+    var farbe = b.farbe || HB_FARBEN[idx % HB_FARBEN.length];
+    var el = document.createElement("div");
+    el.className = "hbPickBook";
+    el.innerHTML =
+      '<div class="hbPickThumb" style="background:'+farbe+';">📖</div>' +
+      '<div class="hbPickTit">' + escapeHtml(b.titel) + '</div>' +
+      '<div style="color:var(--text-faint); font-size:16px;">›</div>';
+    el.onclick = function(){ openRefPickPage(b.id); };
+    wrap.appendChild(el);
+  });
+}
+
+function openRefPickPage(buchId){
+  state.refPickBuchId = buchId;
+  document.getElementById("refPickPageSearch").value = "";
+  document.getElementById("inpRefNotiz").value = "";
+  closeModal("modalRefPickBook");
+  if(state.hbSeitenCache[buchId]){
+    renderRefPickPages();
+    openModal("modalRefPickPage");
+  } else {
+    sbGet("hb_seiten?select=*&buch_id=eq."+buchId+"&order=seite_nr.asc").then(function(rows){
+      state.hbSeitenCache[buchId] = rows || [];
+      renderRefPickPages();
+      openModal("modalRefPickPage");
+    });
+  }
+}
+
+function backToRefPickBook(){
+  closeModal("modalRefPickPage");
+  openModal("modalRefPickBook");
+}
+
+var refPickSelectedSeiteId = null;
+function renderRefPickPages(){
+  var wrap = document.getElementById("refPickPageListe");
+  var seiten = state.hbSeitenCache[state.refPickBuchId] || [];
+  var q = (document.getElementById("refPickPageSearch").value || "").toLowerCase().trim();
+  var list = seiten.filter(function(p){
+    return !q || (p.titel||"").toLowerCase().indexOf(q) > -1 || (p.ocr_text||"").toLowerCase().indexOf(q) > -1;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Keine Seiten gefunden.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  list.forEach(function(pg){
+    var el = document.createElement("div");
+    el.className = "hbPageItem" + (pg.id === refPickSelectedSeiteId ? " hit" : "");
+    el.innerHTML =
+      '<div class="hbPageRow">' +
+        '<span class="hbPageNum">S.' + pg.seite_nr + '</span>' +
+        '<span class="hbPageTit">' + escapeHtml(pg.titel || ("Seite "+pg.seite_nr)) + '</span>' +
+        (pg.bild_url ? '<img class="hbPageThumb" src="'+pg.bild_url+'">' : '') +
+      '</div>';
+    el.onclick = function(){
+      refPickSelectedSeiteId = pg.id;
+      renderRefPickPages();
+      if(!document.getElementById("inpRefNotiz").value.trim()){
+        document.getElementById("inpRefNotiz").value = pg.titel || "";
+      }
+    };
+    wrap.appendChild(el);
+  });
+}
+
+function saveRefVerknuepfung(){
+  if(!refPickSelectedSeiteId){ toast("Bitte eine Seite auswählen", "err"); return; }
+  var target = state.refPickTarget;
+  var notiz = document.getElementById("inpRefNotiz").value.trim();
+  var body = {seite_id: refPickSelectedSeiteId, notiz: notiz};
+  body[target.type === "instanz" ? "instanz_id" : "vorlage_id"] = target.id;
+  sbPost("bg_referenzen", body, true).then(function(){
+    closeModal("modalRefPickPage");
+    refPickSelectedSeiteId = null;
+    toast("🔗 Referenz verknüpft", "ok");
+    var targetElId = target.type === "instanz" ? "refListe" : "refListeVorlage";
+    loadReferenzen(target.type, target.id).then(function(){ renderRefListe(target.type, target.id, targetElId); });
   });
 }
 
