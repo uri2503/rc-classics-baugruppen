@@ -1,0 +1,3144 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Baugruppen-Tracker · Riedel Classics</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --bg: #f4f5f7;
+    --bg-elevated: #ffffff;
+    --bg-card: #ffffff;
+    --line: #dde1e8;
+    --line-soft: #e7eaef;
+    --text: #12141a;
+    --text-dim: #5c6272;
+    --text-faint: #8a90a0;
+    --accent: #0b7ba8;
+    --accent-dim: #095f83;
+    --warn: #a06a0a;
+    --bad: #c23b28;
+    --ok: #1f9457;
+    --mono: 'SF Mono', 'Roboto Mono', Consolas, monospace;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; -webkit-font-smoothing:antialiased;}
+  body{padding-bottom:90px;}
+
+  /* PIN screen */
+  #pinScreen{position:fixed; inset:0; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:200; gap:22px;}
+  #pinScreen .mark{font-family:var(--mono); letter-spacing:.18em; color:var(--text-faint); font-size:12px; text-transform:uppercase;}
+  #pinScreen h1{font-size:20px; font-weight:600; margin:0; letter-spacing:-.01em;}
+  #pinDots{display:flex; gap:14px;}
+  .pinDot{width:12px; height:12px; border-radius:50%; border:1.5px solid var(--line); transition:.15s;}
+  .pinDot.filled{background:var(--accent); border-color:var(--accent);}
+  #pinPad{display:grid; grid-template-columns:repeat(3,64px); gap:14px; margin-top:8px;}
+  .pinBtn{width:64px; height:64px; border-radius:50%; border:1px solid var(--line); background:var(--bg-card); color:var(--text); font-size:22px; font-weight:500; display:flex; align-items:center; justify-content:center;}
+  .pinBtn:active{background:var(--accent-dim); border-color:var(--accent);}
+  .pinBtn.wide{grid-column:span 1;}
+
+  /* header */
+  header{position:sticky; top:0; z-index:50; background:rgba(244,245,247,.92); backdrop-filter:blur(10px); border-bottom:1px solid var(--line-soft); padding:14px 18px 12px;}
+  .headRow{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
+  .brand{font-size:15px; font-weight:700; letter-spacing:-.01em;}
+  .brand small{display:block; font-family:var(--mono); font-size:10px; font-weight:500; letter-spacing:.14em; color:var(--text-faint); text-transform:uppercase; margin-top:2px;}
+  .headStats{display:flex; gap:16px; font-family:var(--mono); font-size:11px; color:var(--text-dim);}
+  .headStats b{color:var(--text); font-size:14px; display:block; font-family:-apple-system,sans-serif; font-weight:700;}
+
+  main{padding:16px 16px 8px; max-width:720px; margin:0 auto;}
+
+  /* Tabs (bottom nav) */
+  nav.tabbar{position:fixed; bottom:0; left:0; right:0; z-index:60; background:rgba(244,245,247,.96); backdrop-filter:blur(10px); border-top:1px solid var(--line-soft); display:flex; padding:6px 4px calc(6px + env(safe-area-inset-bottom));}
+  .tabbtn{flex:1; display:flex; flex-direction:column; align-items:center; gap:3px; padding:6px 2px; color:var(--text-faint); font-size:10px; font-weight:600; letter-spacing:.01em;}
+  .tabbtn.active{color:var(--accent);}
+  .tabbtn svg{width:20px; height:20px;}
+
+  .view{display:none;}
+  .view.active{display:block; animation:fadeUp .25s ease;}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:translateY(0);}}
+
+  h2.viewTitle{font-size:19px; font-weight:700; margin:4px 0 14px; letter-spacing:-.01em;}
+  .sub{color:var(--text-dim); font-size:13px; margin:-8px 0 16px;}
+
+  /* Cards */
+  .card{background:var(--bg-card); border:1px solid var(--line); border-radius:14px; padding:16px; margin-bottom:12px;}
+  .card.tap:active{background:var(--bg-elevated); border-color:var(--accent-dim);}
+
+  .fzCard{display:flex; justify-content:space-between; align-items:flex-start; gap:10px;}
+  .fzCard .fzMain{flex:1; min-width:0;}
+  .fzTitle{font-weight:700; font-size:15px;}
+  .fzMeta{font-family:var(--mono); font-size:11px; color:var(--text-dim); margin-top:3px;}
+  .fzKunde{font-size:12px; color:var(--text-dim); margin-top:5px;}
+  .badge{display:inline-flex; align-items:center; padding:3px 9px; border-radius:20px; font-size:10.5px; font-weight:700; letter-spacing:.02em; white-space:nowrap;}
+  .badge.aktiv{background:rgba(14,165,233,.15); color:var(--accent);}
+  .badge.abgeschlossen{background:rgba(62,194,122,.15); color:var(--ok);}
+  .badge.pausiert{background:rgba(224,167,46,.15); color:var(--warn);}
+
+  .bgList{display:flex; flex-direction:column; gap:8px; margin-top:12px;}
+  .bgRow{display:flex; align-items:center; gap:12px; background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:11px; padding:11px 13px;}
+  .bgRow .dot{width:9px; height:9px; border-radius:50%; flex-shrink:0;}
+  .dot.zerlegt{background:var(--text-faint);}
+  .dot.geprueft{background:var(--warn);}
+  .dot.bestellt{background:var(--accent);}
+  .dot.wareneingang{background:#a855f7;}
+  .dot.fertigung{background:var(--ok);}
+  .dot.abgeschlossen{background:var(--ok);}
+  .bgRow .bgName{flex:1; font-size:13.5px; font-weight:600;}
+  .bgRow .bgStatus{font-family:var(--mono); font-size:10px; color:var(--text-dim); text-transform:uppercase; letter-spacing:.04em;}
+  .bgRow .arrow{color:var(--text-faint); font-size:16px;}
+
+  .fab{position:fixed; right:18px; bottom:84px; z-index:55; width:54px; height:54px; border-radius:50%; background:var(--accent); box-shadow:0 6px 20px rgba(14,165,233,.4); display:flex; align-items:center; justify-content:center; font-size:26px; color:#08131c; font-weight:400;}
+  .fab:active{transform:scale(.94);}
+
+  /* forms */
+  label{display:block; font-size:11.5px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:.05em; margin:14px 0 6px;}
+  label:first-child{margin-top:0;}
+  input[type=text], input[type=search], select, textarea{
+    width:100%; background:var(--bg-elevated); border:1px solid var(--line); border-radius:10px; padding:12px 13px; color:var(--text); font-size:14.5px; font-family:inherit;
+  }
+  input:focus, select:focus, textarea:focus{outline:none; border-color:var(--accent);}
+  textarea{resize:vertical; min-height:70px;}
+
+  .btnRow{display:flex; gap:10px; margin-top:18px;}
+  .btn{flex:1; padding:13px; border-radius:11px; border:none; font-size:14px; font-weight:700; text-align:center;}
+  .btn.primary{background:var(--accent); color:#08131c;}
+  .btn.primary:active{background:var(--accent-dim);}
+  .btn.ghost{background:transparent; border:1px solid var(--line); color:var(--text-dim);}
+  .btn.danger{background:rgba(224,82,61,.12); color:var(--bad); border:1px solid rgba(224,82,61,.3);}
+  .btn:disabled{opacity:.4;}
+  .btn.full{width:100%;}
+
+  /* detail view */
+  .backBar{display:flex; align-items:center; gap:10px; margin-bottom:14px;}
+  .backBtn{width:44px; height:44px; border-radius:10px; background:var(--bg-card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; color:var(--text-dim); font-size:19px; flex-shrink:0;}
+  .detailTitle{font-size:18px; font-weight:700; flex:1;}
+
+  .photoBox{width:100%; aspect-ratio:4/3; border-radius:14px; background:var(--bg-elevated); border:1px dashed var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text-faint); overflow:hidden; position:relative; margin-bottom:14px;}
+  .photoBox img{width:100%; height:100%; object-fit:cover;}
+  .photoBox .hint{font-size:12px;}
+  .photoBox .icon{font-size:30px;}
+
+  .kiBox{background:rgba(14,165,233,.08); border:1px solid rgba(14,165,233,.25); border-radius:12px; padding:13px 14px; margin-bottom:14px; font-size:13px; line-height:1.5;}
+  .kiBox .kiLabel{font-family:var(--mono); font-size:10px; color:var(--accent); text-transform:uppercase; letter-spacing:.08em; margin-bottom:6px; display:flex; align-items:center; gap:6px;}
+  .kiSpin{width:12px; height:12px; border:2px solid rgba(14,165,233,.3); border-top-color:var(--accent); border-radius:50%; animation:spin .7s linear infinite;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  .statusStrip{display:flex; gap:6px; overflow-x:auto; padding-bottom:4px; margin-bottom:16px; scrollbar-width:none;}
+  .statusStrip::-webkit-scrollbar{display:none;}
+  .statusChip{flex-shrink:0; padding:7px 13px; border-radius:20px; font-size:11.5px; font-weight:700; background:var(--bg-elevated); border:1px solid var(--line); color:var(--text-faint); white-space:nowrap;}
+  .statusChip.current{background:var(--accent); border-color:var(--accent); color:#08131c;}
+  .statusChip.done{color:var(--ok); border-color:rgba(62,194,122,.3);}
+
+  .teilItem{display:flex; align-items:center; gap:11px; padding:12px 0; border-bottom:1px solid var(--line-soft);}
+  .teilItem:last-child{border-bottom:none;}
+  .teilCheck{width:24px; height:24px; border-radius:7px; border:1.5px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:transparent;}
+  .teilCheck.on{background:var(--accent); border-color:var(--accent); color:#08131c;}
+  .teilMain{flex:1; min-width:0;}
+  .teilName{font-size:13.5px; font-weight:600;}
+  .teilHint{font-size:11px; color:var(--text-faint); margin-top:1px;}
+  .zustandPicker{display:flex; gap:5px; flex-shrink:0;}
+  .zBtn{width:30px; height:30px; border-radius:8px; border:1px solid var(--line); font-size:12px; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-weight:700;}
+  .zBtn.ok.active{background:rgba(62,194,122,.18); border-color:var(--ok); color:var(--ok);}
+  .zBtn.verschlissen.active{background:rgba(224,167,46,.18); border-color:var(--warn); color:var(--warn);}
+  .zBtn.defekt.active{background:rgba(224,82,61,.18); border-color:var(--bad); color:var(--bad);}
+
+  .sectionLabel{font-family:var(--mono); font-size:10.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.08em; margin:20px 0 8px; display:flex; justify-content:space-between; align-items:center;}
+
+  .emptyState{text-align:center; padding:50px 20px; color:var(--text-faint);}
+  .emptyState .icon{font-size:34px; margin-bottom:10px; opacity:.5;}
+  .emptyState p{font-size:13px; margin:4px 0;}
+
+  .toast{position:fixed; bottom:100px; left:50%; transform:translateX(-50%) translateY(20px); background:var(--bg-card); border:1px solid var(--line); padding:11px 18px; border-radius:11px; font-size:13px; font-weight:600; z-index:300; opacity:0; transition:.25s; pointer-events:none; box-shadow:0 8px 24px rgba(0,0,0,.4);}
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .toast.ok{color:var(--ok);}
+  .toast.err{color:var(--bad);}
+
+  .modalBg{position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:150; display:flex; align-items:flex-end; opacity:0; pointer-events:none; transition:.2s;}
+  .modalBg.show{opacity:1; pointer-events:auto;}
+  .modalSheet{background:var(--bg-card); border-radius:20px 20px 0 0; border:1px solid var(--line); border-bottom:none; width:100%; max-height:85vh; overflow-y:auto; padding:20px 18px calc(24px + env(safe-area-inset-bottom)); transform:translateY(100%); transition:.25s;}
+  .modalBg.show .modalSheet{transform:translateY(0);}
+  .modalHandle{width:36px; height:4px; background:var(--line); border-radius:2px; margin:0 auto 16px;}
+  .modalTitle{font-size:16px; font-weight:700; margin-bottom:14px;}
+
+  .orderGroup{margin-bottom:16px;}
+  .orderGroup .ogTitle{font-size:12.5px; font-weight:700; color:var(--text-dim); margin-bottom:8px;}
+  .orderTeil{display:flex; justify-content:space-between; align-items:center; padding:9px 0; border-bottom:1px solid var(--line-soft); font-size:13px;}
+  .orderTeil .otWe{width:22px; height:22px; border-radius:6px; border:1.5px solid var(--line); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:12px; color:transparent;}
+  .orderTeil .otWe.on{background:var(--ok); border-color:var(--ok); color:#08131c;}
+
+  select{ -webkit-appearance:none; appearance:none; background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%239098a8' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 12px center; background-size:16px; padding-right:36px;}
+
+  /* Vorlagen-Detail / Editor */
+  .vorlageCard{display:flex; justify-content:space-between; align-items:center; gap:10px;}
+  .vorlageThumb{width:44px; height:44px; border-radius:9px; background:var(--bg-elevated); border:1px solid var(--line); flex-shrink:0; overflow:hidden; display:flex; align-items:center; justify-content:center; color:var(--text-faint); font-size:16px;}
+  .vorlageThumb img{width:100%; height:100%; object-fit:cover;}
+
+  .refPhotoBox{width:100%; border-radius:14px; background:var(--bg-elevated); border:1px dashed var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--text-faint); overflow:hidden; position:relative; margin-bottom:14px; min-height:160px;}
+  .refPhotoBox img{width:100%; display:block;}
+  .refPhotoBox .hint{font-size:12px;}
+  .refPhotoBox .icon{font-size:26px;}
+  .refPhotoBox.hasImg{border-style:solid; cursor:zoom-in;}
+
+  .zoomOverlay{position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:250; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:.2s; padding:20px;}
+  .zoomOverlay.show{opacity:1; pointer-events:auto;}
+  .zoomOverlay img{max-width:100%; max-height:100%; border-radius:8px;}
+  .zoomClose{position:absolute; top:20px; right:20px; width:38px; height:38px; border-radius:50%; background:var(--bg-card); border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:18px;}
+
+  .editTeilRow{background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:12px; padding:12px; margin-bottom:8px;}
+  .editTeilGrid{display:grid; grid-template-columns:52px 1fr 52px; gap:8px; margin-bottom:8px;}
+  .editTeilGrid input{padding:9px 10px; font-size:13px;}
+  .editTeilGrid input[data-field="menge"]{text-align:center;}
+  .editTeilGrid2{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:8px;}
+  .editTeilGrid2 input{padding:9px 10px; font-size:13px;}
+  .editTeilFoot{display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .editTeilFoot label.inlineChk{display:flex; align-items:center; gap:6px; margin:0; text-transform:none; font-weight:500; color:var(--text-dim); font-size:12.5px;}
+  .editTeilFoot input[type=checkbox]{width:17px; height:17px; accent-color:var(--accent);}
+  .removeTeilBtn{width:30px; height:30px; border-radius:8px; background:rgba(224,82,61,.1); border:1px solid rgba(224,82,61,.25); color:var(--bad); font-size:15px; display:flex; align-items:center; justify-content:center; flex-shrink:0;}
+
+  /* collapsible Teil-Karte (Katalog) */
+  .editTeilRow.collapsible{padding:0; overflow:hidden;}
+  .editTeilRow.collapsible .editTeilBody{padding:0 12px 12px;}
+  .teilSummary{display:flex; align-items:center; gap:10px; padding:12px; cursor:pointer;}
+  .teilSummary .tsPos{font-family:var(--mono); font-size:11px; color:var(--text-faint); width:22px; flex-shrink:0; text-align:center;}
+  .teilSummary .tsName{flex:1; min-width:0; font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .teilSummary .tsName .tsEmpty{color:var(--text-faint); font-weight:500; font-style:italic;}
+  .teilSummary .tsMenge{font-family:var(--mono); font-size:11px; color:var(--text-dim); flex-shrink:0;}
+  .teilSummary .tsWarnDot{width:7px; height:7px; border-radius:50%; background:var(--warn); flex-shrink:0;}
+  .teilSummary .tsChevron{color:var(--text-faint); font-size:13px; flex-shrink:0; transition:transform .18s ease;}
+  .editTeilRow.open .tsChevron{transform:rotate(90deg);}
+  .editTeilRow:not(.open) .editTeilBody{display:none;}
+  .addTeilBtn{width:100%; padding:12px; border-radius:11px; border:1px dashed var(--line); background:transparent; color:var(--accent); font-size:13.5px; font-weight:700; margin-top:4px;}
+  .pdfImportBtn{border-style:solid; background:var(--bg-elevated); color:var(--text);}
+  .pdfImportStatus{margin-top:10px; padding:12px; border-radius:11px; background:var(--bg-elevated); border:1px solid var(--line-soft); font-size:13px; color:var(--text-dim); line-height:1.5;}
+  .pdfImportStatus.err{color:var(--bad); border-color:rgba(224,82,61,.3);}
+  .pdfReviewList{margin-top:10px; max-height:340px; overflow-y:auto; border:1px solid var(--line-soft); border-radius:11px;}
+  .pdfReviewRow{display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--line-soft); font-size:12.5px;}
+  .pdfReviewRow:last-child{border-bottom:none;}
+  .pdfReviewRow input[type=checkbox]{width:16px; height:16px; accent-color:var(--accent); flex-shrink:0;}
+  .pdfReviewRow .prPos{font-family:var(--mono); color:var(--text-faint); width:26px; flex-shrink:0; text-align:center;}
+  .pdfReviewRow .prName{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .pdfReviewRow .prMenge{font-family:var(--mono); color:var(--text-dim); flex-shrink:0;}
+  .pdfReviewActions{display:flex; gap:8px; margin-top:10px;}
+  .pdfReviewActions .btn{flex:1;}
+
+  .editModeToggle{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent); padding:6px 12px; border-radius:20px; background:rgba(14,165,233,.1); border:1px solid rgba(14,165,233,.25);}
+
+  .miniPhotoBtn{display:flex; align-items:center; justify-content:center; gap:6px; padding:9px; border-radius:9px; border:1px dashed var(--line); background:var(--bg-card); color:var(--text-dim); font-size:12px; font-weight:600; margin-bottom:8px;}
+  .miniPhotoBtn img{width:100%; border-radius:7px; margin-top:6px;}
+
+  /* ── Handbuch ───────────────────────────────────────────── */
+  .hbSearchWrap{display:flex; align-items:center; gap:8px; background:var(--bg-card); border:1px solid var(--line); border-radius:20px; padding:0 13px; margin-bottom:12px;}
+  .hbSearchWrap input{flex:1; border:none; outline:none; background:transparent; font-size:14.5px; padding:11px 0; color:var(--text);}
+  .hbGrid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .hbCard{background:var(--bg-card); border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .hbCard:active{border-color:var(--accent-dim);}
+  .hbCover{aspect-ratio:3/2; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:10px; position:relative;}
+  .hbCoverSub{font-size:9px; letter-spacing:.15em; color:rgba(255,255,255,.55); text-transform:uppercase; margin-bottom:4px;}
+  .hbCoverTit{font-size:12px; font-weight:700; color:#fff; text-align:center; line-height:1.3;}
+  .hbInfo{padding:9px 11px 11px;}
+  .hbTit{font-size:12.5px; font-weight:700; margin-bottom:2px; line-height:1.3;}
+  .hbMeta{font-size:10.5px; color:var(--text-faint);}
+  .hbEmpty{text-align:center; padding:50px 20px; color:var(--text-faint);}
+  .hbEmpty .icon{font-size:34px; margin-bottom:10px; opacity:.5;}
+
+  .hbUploadBtns{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;}
+  .hbUbtn{border:1.5px dashed var(--line); border-radius:11px; padding:16px 10px; text-align:center; color:var(--text-dim); background:var(--bg-elevated);}
+  .hbUbtn:active{border-color:var(--accent-dim); background:rgba(11,123,168,.06);}
+  .hbUbtn .uzi{font-size:22px; margin-bottom:4px;}
+  .hbUbtn p{font-size:12px; font-weight:600;}
+  .hbUbtn small{font-size:10px; color:var(--text-faint);}
+
+  .hbPageList{display:flex; flex-direction:column; gap:8px;}
+  .hbPageItem{background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:10px; padding:10px 12px;}
+  .hbPageItem.hit{border-color:var(--accent-dim); background:rgba(11,123,168,.05);}
+  .hbPageRow{display:flex; align-items:center; gap:8px; margin-bottom:4px;}
+  .hbPageNum{font-size:9px; background:var(--text); color:var(--bg-card); padding:2px 6px; border-radius:8px; flex-shrink:0;}
+  .hbPageTit{font-weight:600; font-size:12.5px; flex:1;}
+  .hbPageThumb{width:42px; height:42px; border-radius:6px; object-fit:cover; flex-shrink:0; border:1px solid var(--line);}
+  .hbPageExcerpt{font-size:11px; color:var(--text-dim); line-height:1.5;}
+  .hbPageExcerpt mark{background:#ffe28a; border-radius:2px; padding:0 2px;}
+
+  .hbOcrBtn{display:flex; align-items:center; gap:8px; padding:9px 12px; border-radius:9px; background:var(--bg-elevated); border:1px solid var(--line); cursor:pointer; font-size:12px; font-weight:600; color:var(--text-dim); margin-bottom:10px;}
+  .hbOcrBtn.run{border-color:var(--accent); color:var(--accent);}
+  .hbSpin{width:12px; height:12px; border:2px solid var(--line); border-top-color:var(--accent); border-radius:50%; animation:hbspin .7s linear infinite; display:none;}
+  .hbOcrBtn.run .hbSpin{display:block;}
+  @keyframes hbspin{to{transform:rotate(360deg);}}
+
+  .hbViewerImg{width:100%; border-radius:10px; margin-bottom:12px;}
+  .hbOcrTextBox{background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:10px; padding:12px; font-size:13px; line-height:1.55; white-space:pre-wrap; color:var(--text-dim); margin-bottom:12px;}
+
+  /* Referenzen (an Baugruppe/Vorlage) */
+  .refItem{display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:11px; padding:11px 13px; margin-bottom:8px;}
+  .refItem .refIcon{font-size:18px; flex-shrink:0;}
+  .refItem .refMain{flex:1; min-width:0;}
+  .refItem .refTitle{font-size:13px; font-weight:700;}
+  .refItem .refSource{font-size:10.5px; color:var(--text-faint); margin-top:1px;}
+  .refItem .refRemove{color:var(--bad); font-size:16px; flex-shrink:0; padding:4px;}
+  .refItem .refEdit{color:var(--text-faint); font-size:15px; flex-shrink:0; padding:4px 2px;}
+
+  .refCatHeader{display:flex; align-items:center; gap:7px; padding:12px 2px; margin-top:6px; border-top:1px solid var(--line-soft);}
+  .refCatArrow{font-size:11px; color:var(--text-faint); transition:transform .15s; flex-shrink:0;}
+  .refCatArrow.open{transform:rotate(90deg);}
+  .refCatLabel{font-size:11.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; color:var(--text-dim);}
+  .refCatCount{font-size:10.5px; color:var(--text-faint); background:var(--bg-elevated); border-radius:8px; padding:1px 7px; font-weight:700;}
+  .refCatAdd{margin-left:auto; color:var(--accent); font-size:11.5px; font-weight:700; padding:4px 2px;}
+  .refCatBody{display:none;}
+  .refCatBody.open{display:block; padding-top:2px;}
+
+  .hbPickBook{display:flex; align-items:center; gap:10px; background:var(--bg-elevated); border:1px solid var(--line-soft); border-radius:11px; padding:11px 13px; margin-bottom:8px;}
+  .hbPickBook .hbPickThumb{width:34px; height:34px; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:14px; color:#fff;}
+  .hbPickBook .hbPickTit{flex:1; font-size:13px; font-weight:600;}
+</style>
+</head>
+<body>
+
+<!-- PIN SCREEN -->
+<div id="pinScreen">
+  <div class="mark">RIEDEL CLASSICS · WERKSTATT</div>
+  <h1>Baugruppen-Tracker</h1>
+  <div id="pinDots"></div>
+  <div id="pinPad"></div>
+</div>
+
+<!-- HEADER -->
+<header>
+  <div class="headRow">
+    <div class="brand">Baugruppen-Tracker<small>Zerlegung → Teile → Bestellung → Fertigung</small></div>
+    <div class="headStats">
+      <div><b id="statOffen">0</b>offen</div>
+      <div><b id="statBestellt">0</b>bestellt</div>
+    </div>
+  </div>
+</header>
+
+<main>
+
+  <!-- VIEW: Fahrzeuge -->
+  <div class="view active" id="view-fahrzeuge">
+    <h2 class="viewTitle">Fahrzeuge</h2>
+    <div id="fahrzeugListe"></div>
+  </div>
+
+  <!-- VIEW: Fahrzeug-Detail (Baugruppen) -->
+  <div class="view" id="view-fahrzeugDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="goTo('fahrzeuge')">←</div>
+      <div class="detailTitle" id="fzDetailTitle">Fahrzeug</div>
+    </div>
+    <div class="card" id="fzInfoCard"></div>
+    <div class="sectionLabel">Baugruppen<span style="color:var(--accent); cursor:pointer;" onclick="openNeueBaugruppe()">+ Neu</span></div>
+    <div class="bgList" id="baugruppenListe"></div>
+  </div>
+
+  <!-- VIEW: Baugruppen-Detail -->
+  <div class="view" id="view-bgDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="backToFahrzeug()">←</div>
+      <div class="detailTitle" id="bgDetailTitle">Baugruppe</div>
+    </div>
+
+    <div class="statusStrip" id="statusStrip"></div>
+
+    <div class="photoBox" id="photoBox" onclick="triggerPhoto()">
+      <div class="icon">📷</div>
+      <div class="hint">Werkstattfoto aufnehmen (mit KI-Analyse)</div>
+      <input type="file" accept="image/*" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">
+    </div>
+
+    <div id="kiBoxWrap"></div>
+
+    <div class="refPhotoBox" id="instRefPhotoBox" onclick="handleInstRefPhotoClick()" style="min-height:100px; margin-top:10px;">
+      <div class="icon">🖼️</div>
+      <div class="hint">Referenzbild / Katalogzeichnung (ohne KI-Analyse)</div>
+      <input type="file" accept="image/*" id="instRefPhotoInput" style="display:none" onchange="onInstRefPhotoSelected(event)">
+    </div>
+
+    <div class="sectionLabel">Teileliste <span id="teilCount" style="color:var(--text-faint); font-weight:600;"></span></div>
+    <div class="card" id="teileCard" style="padding:4px 16px;"></div>
+
+    <div class="btnRow">
+      <button class="btn ghost" onclick="openVorlageLaden()">Vorlage laden</button>
+      <button class="btn primary" onclick="teileZuBestellungUebernehmen()">In Bestellung übernehmen</button>
+    </div>
+    <button class="btn ghost full" style="margin-top:10px;" onclick="teileZuExternUebernehmen()">🎨 In Extern-Auftrag übernehmen</button>
+    <button class="btn ghost full" style="margin-top:10px;" onclick="druckeTeileliste()">🖨️ Teileliste drucken / PDF</button>
+
+    <div class="refCatHeader" onclick="toggleRefCat('instanz_anleitung')">
+      <span class="refCatArrow" id="refCatArrow_instanz_anleitung">▸</span>
+      <span class="refCatLabel">🔧 Technische Anleitung</span>
+      <span class="refCatCount" id="refCatCount_instanz_anleitung"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('instanz','anleitung')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_instanz_anleitung" class="refCatBody"></div>
+
+    <div class="refCatHeader" onclick="toggleRefCat('instanz_einstellwerte')">
+      <span class="refCatArrow" id="refCatArrow_instanz_einstellwerte">▸</span>
+      <span class="refCatLabel">📐 Einstellwerte</span>
+      <span class="refCatCount" id="refCatCount_instanz_einstellwerte"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('instanz','einstellwerte')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_instanz_einstellwerte" class="refCatBody"></div>
+
+    <div class="refCatHeader" onclick="toggleRefCat('instanz_anzugsmomente')">
+      <span class="refCatArrow" id="refCatArrow_instanz_anzugsmomente">▸</span>
+      <span class="refCatLabel">🔩 Anzugsmomente</span>
+      <span class="refCatCount" id="refCatCount_instanz_anzugsmomente"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('instanz','anzugsmomente')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_instanz_anzugsmomente" class="refCatBody"></div>
+
+    <div class="refCatHeader" onclick="toggleRefCat('instanz_sonstiges')">
+      <span class="refCatArrow" id="refCatArrow_instanz_sonstiges">▸</span>
+      <span class="refCatLabel">📎 Sonstiges</span>
+      <span class="refCatCount" id="refCatCount_instanz_sonstiges"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('instanz','sonstiges')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_instanz_sonstiges" class="refCatBody"></div>
+
+    <div class="sectionLabel" style="margin-top:26px;">Notizen</div>
+    <textarea id="bgNotizen" placeholder="Zustand, Besonderheiten, Maße..." onblur="saveBgNotizen()"></textarea>
+  </div>
+
+  <!-- VIEW: Bestellungen -->
+  <div class="view" id="view-bestellungen">
+    <h2 class="viewTitle">Aufträge</h2>
+    <div class="statusStrip" style="margin-bottom:16px;">
+      <div class="statusChip current" id="tabBestellungen" onclick="switchAuftragTab('bestellung')">Bestellungen</div>
+      <div class="statusChip" id="tabExtern" onclick="switchAuftragTab('extern')">Extern (Beschichten/Galvanik)</div>
+    </div>
+    <div id="bestellListe"></div>
+    <div id="externListe" style="display:none;"></div>
+  </div>
+
+  <!-- VIEW: Bestell-Detail -->
+  <div class="view" id="view-bestellDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="goTo('bestellungen')">←</div>
+      <div class="detailTitle" id="bestellDetailTitle">Bestellauftrag</div>
+    </div>
+    <div class="card" id="bestellInfoCard"></div>
+    <div class="sectionLabel">Positionen — Wareneingang abhaken</div>
+    <div id="bestellPositionen"></div>
+    <button class="btn primary full" style="margin-top:16px;" onclick="bestellungAbschliessen()">Als komplett markieren</button>
+    <button class="btn ghost full" style="margin-top:10px;" onclick="druckeBestellung()">🖨️ Bestellliste drucken / PDF</button>
+  </div>
+
+  <!-- VIEW: Extern-Auftrag-Detail -->
+  <div class="view" id="view-externDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="goTo('bestellungen')">←</div>
+      <div class="detailTitle" id="externDetailTitle">Extern-Auftrag</div>
+    </div>
+    <div class="card" id="externInfoCard"></div>
+    <div class="sectionLabel">Teile — Rückgabe abhaken</div>
+    <div id="externPositionen"></div>
+    <button class="btn primary full" style="margin-top:16px;" onclick="externAuftragAbschliessen()">Als fertig markieren</button>
+    <button class="btn ghost full" style="margin-top:10px;" onclick="druckeExternAuftrag()">🖨️ Auftragsliste drucken / PDF</button>
+  </div>
+
+  <!-- VIEW: Vorlagen -->
+  <div class="view" id="view-vorlagen">
+    <h2 class="viewTitle">Katalog-Vorlagen</h2>
+    <div class="sub">Standard-Teilelisten je Modell &amp; Baugruppentyp</div>
+    <div id="vorlagenListe"></div>
+    <button class="btn primary full" style="margin-top:14px;" onclick="openNeueVorlage()">+ Neue Vorlage</button>
+  </div>
+
+  <!-- VIEW: Vorlagen-Detail (Editor) -->
+  <div class="view" id="view-vorlageDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="goTo('vorlagen')">←</div>
+      <div class="detailTitle" id="vorlageDetailTitle">Vorlage</div>
+    </div>
+
+    <div class="refPhotoBox" id="refPhotoBox" onclick="handleRefPhotoBoxClick()">
+      <div class="icon">🖼️</div>
+      <div class="hint">Explosionszeichnung / Referenzbild hinzufügen</div>
+      <input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">
+    </div>
+
+    <div class="sectionLabel">Teile <span id="vorlageTeilCount" style="color:var(--text-faint); font-weight:600;"></span></div>
+    <div id="vorlageTeileEditor"></div>
+    <button class="addTeilBtn" onclick="addLeeresTeil()">+ Teil hinzufügen</button>
+    <button class="addTeilBtn pdfImportBtn" onclick="document.getElementById('pdfTeileInput').click()">📄 Teileliste aus PDF importieren</button>
+    <input type="file" accept="application/pdf" id="pdfTeileInput" style="display:none" onchange="onPdfTeileSelected(event)">
+    <div id="pdfImportStatus" class="pdfImportStatus" style="display:none;"></div>
+
+    <div class="refCatHeader" onclick="toggleRefCat('vorlage_anleitung')">
+      <span class="refCatArrow" id="refCatArrow_vorlage_anleitung">▸</span>
+      <span class="refCatLabel">🔧 Technische Anleitung</span>
+      <span class="refCatCount" id="refCatCount_vorlage_anleitung"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('vorlage','anleitung')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_vorlage_anleitung" class="refCatBody"></div>
+
+    <div class="refCatHeader" onclick="toggleRefCat('vorlage_einstellwerte')">
+      <span class="refCatArrow" id="refCatArrow_vorlage_einstellwerte">▸</span>
+      <span class="refCatLabel">📐 Einstellwerte</span>
+      <span class="refCatCount" id="refCatCount_vorlage_einstellwerte"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('vorlage','einstellwerte')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_vorlage_einstellwerte" class="refCatBody"></div>
+
+    <div class="refCatHeader" onclick="toggleRefCat('vorlage_anzugsmomente')">
+      <span class="refCatArrow" id="refCatArrow_vorlage_anzugsmomente">▸</span>
+      <span class="refCatLabel">🔩 Anzugsmomente</span>
+      <span class="refCatCount" id="refCatCount_vorlage_anzugsmomente"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('vorlage','anzugsmomente')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_vorlage_anzugsmomente" class="refCatBody"></div>
+
+    <div class="refCatHeader" onclick="toggleRefCat('vorlage_sonstiges')">
+      <span class="refCatArrow" id="refCatArrow_vorlage_sonstiges">▸</span>
+      <span class="refCatLabel">📎 Sonstiges</span>
+      <span class="refCatCount" id="refCatCount_vorlage_sonstiges"></span>
+      <span class="refCatAdd" onclick="event.stopPropagation(); openRefPicker('vorlage','sonstiges')">+ Hinzufügen</span>
+    </div>
+    <div id="refListe_vorlage_sonstiges" class="refCatBody"></div>
+  </div>
+
+  <!-- VIEW: Handbuch (Bibliothek) -->
+  <div class="view" id="view-handbuch">
+    <h2 class="viewTitle">Handbuch</h2>
+    <div class="sub">Werkstatthandbücher &amp; Tabellenbücher</div>
+    <div class="hbSearchWrap">
+      <span style="color:var(--text-faint);">🔍</span>
+      <input type="text" id="hbSearchInput" placeholder="Bücher durchsuchen…" oninput="renderHandbuchListe()">
+    </div>
+    <div id="handbuchListe"></div>
+    <button class="btn primary full" style="margin-top:14px;" onclick="openNeuesHandbuch()">+ Neues Handbuch</button>
+  </div>
+
+  <!-- VIEW: Handbuch-Detail (Seiten) -->
+  <div class="view" id="view-handbuchDetail">
+    <div class="backBar">
+      <div class="backBtn" onclick="goTo('handbuch')">←</div>
+      <div class="detailTitle" id="hbDetailTitle">Handbuch</div>
+    </div>
+    <div class="card" id="hbInfoCard"></div>
+
+    <div class="hbSearchWrap">
+      <span style="color:var(--text-faint);">🔍</span>
+      <input type="text" id="hbPageSearchInput" placeholder="Seiten durchsuchen…" oninput="renderHandbuchSeiten()">
+    </div>
+
+    <div class="hbOcrBtn" id="hbOcrAllBtn" onclick="ocrAlleSeiten()">
+      <div class="hbSpin"></div>
+      <span id="hbOcrAllLbl">⚡ Alle Seiten OCR-indexieren (Tesseract)</span>
+    </div>
+
+    <div class="hbPageList" id="hbPageListe"></div>
+    <div class="emptyState" id="hbPageNone" style="display:none;"><p>Keine Treffer.</p></div>
+
+    <div class="btnRow" style="margin-top:16px;">
+      <button class="btn ghost" onclick="document.getElementById('hbAddFotoInput').click()">📷 Fotos</button>
+      <button class="btn ghost" onclick="document.getElementById('hbAddPdfInput').click()">📄 PDF</button>
+    </div>
+    <button class="btn danger full" style="margin-top:10px;" onclick="loescheHandbuch()">🗑 Handbuch löschen</button>
+    <input type="file" accept="image/*" multiple id="hbAddFotoInput" style="display:none" onchange="hbSeitenAusFotos(this.files)">
+    <input type="file" accept="application/pdf" id="hbAddPdfInput" style="display:none" onchange="hbSeitenAusPdf(this.files[0])">
+    <div id="hbUploadStatus" style="margin-top:8px; font-size:12px; color:var(--text-dim); font-weight:600;"></div>
+  </div>
+
+  <!-- VIEW: Handbuch-Seiten-Viewer -->
+  <div class="view" id="view-hbSeite">
+    <div class="backBar">
+      <div class="backBtn" id="hbSeiteBackBtn" onclick="hbSeiteBack()">←</div>
+      <input type="text" class="detailTitle" id="hbSeiteTitelInput" style="background:transparent; border:none; outline:none; color:var(--text);" onblur="saveHbSeiteTitel()">
+      <span style="font-family:var(--mono); font-size:11px; color:var(--text-faint);" id="hbSeiteNum"></span>
+    </div>
+    <div class="sub" id="hbSeiteRueckwegHint" style="display:none; margin:-10px 0 12px;"></div>
+    <div class="btnRow" style="margin-bottom:12px;">
+      <button class="btn ghost" id="hbNavPrev" onclick="hbNavSeite(-1)">◀ Zurück</button>
+      <button class="btn ghost" id="hbNavNext" onclick="hbNavSeite(1)">Weiter ▶</button>
+    </div>
+    <img class="hbViewerImg" id="hbSeiteImg" src="">
+    <div class="sectionLabel">OCR-Text<span id="hbSeiteOcrQuelle" style="color:var(--text-faint); font-weight:600; text-transform:none; letter-spacing:0;"></span></div>
+    <div class="hbOcrTextBox" id="hbSeiteOcrText">—</div>
+    <button class="btn primary full" style="margin-bottom:10px;" onclick="openHbLinkPicker()">🔗 An Baugruppe / Vorlage verknüpfen</button>
+    <button class="btn ghost full" onclick="claudeAnalyseSeite()">✨ Mit Claude Vision neu analysieren (genauer, kostenpflichtig)</button>
+  </div>
+
+</main>
+
+<div class="fab" id="fabAdd" onclick="openNeuesFahrzeug()">+</div>
+
+<nav class="tabbar">
+  <div class="tabbtn active" data-tab="fahrzeuge" onclick="goTo('fahrzeuge')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13l1.5-4.5A2 2 0 0 1 6.4 7h11.2a2 2 0 0 1 1.9 1.5L21 13v5a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-5z"/><circle cx="7" cy="17" r="1.5"/><circle cx="17" cy="17" r="1.5"/></svg>
+    Fahrzeuge
+  </div>
+  <div class="tabbtn" data-tab="bestellungen" onclick="goTo('bestellungen')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2l1.5 5M18 2l-1.5 5M6 7h12l-1.5 9h-9L6 7z"/><circle cx="9" cy="20" r="1"/><circle cx="15" cy="20" r="1"/></svg>
+    Bestellungen
+  </div>
+  <div class="tabbtn" data-tab="vorlagen" onclick="goTo('vorlagen')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>
+    Katalog
+  </div>
+  <div class="tabbtn" data-tab="handbuch" onclick="goTo('handbuch')">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5v-15z"/><path d="M4 20.5A2.5 2.5 0 0 1 6.5 18H20"/></svg>
+    Handbuch
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<div class="zoomOverlay" id="zoomOverlay" onclick="closeZoom()">
+  <div class="zoomClose">✕</div>
+  <img id="zoomImg" src="">
+</div>
+
+<!-- Modal: Neue Vorlage -->
+<div class="modalBg" id="modalNeueVorlage">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Neue Vorlage</div>
+    <label>Modell</label>
+    <input type="text" id="inpVModell" placeholder="z.B. W111 59-66">
+    <label>Baugruppentyp</label>
+    <select id="inpVTyp">
+      <option>Motor</option>
+      <option>Getriebe</option>
+      <option>Vorderachse</option>
+      <option>Achse hinten</option>
+      <option>Differenzial</option>
+      <option>Bremsen vorne</option>
+      <option>Bremsen hinten</option>
+      <option>Lenkung</option>
+      <option>Karosserie</option>
+      <option>Innenausstattung</option>
+      <option>Elektrik</option>
+      <option>Sonstiges</option>
+    </select>
+    <label>Name der Vorlage</label>
+    <input type="text" id="inpVName" placeholder="z.B. W111 Vorderachse 59-66 Standard">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalNeueVorlage')">Abbrechen</button>
+      <button class="btn primary" onclick="saveNeueVorlage()">Anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Neues Handbuch -->
+<div class="modalBg" id="modalNeuesHandbuch">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Neues Handbuch</div>
+    <label>Titel</label>
+    <input type="text" id="inpHbTitel" placeholder="z.B. W111 Werkstatthandbuch">
+    <label>Kategorie</label>
+    <select id="inpHbKategorie">
+      <option>Werkstatthandbuch</option>
+      <option>Tabellenbuch</option>
+      <option>Ersatzteilkatalog</option>
+      <option>Schaltplan</option>
+      <option>Sonstiges</option>
+    </select>
+    <label>Jahr / Ausgabe (optional)</label>
+    <input type="text" id="inpHbJahr" placeholder="z.B. 1968">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalNeuesHandbuch')">Abbrechen</button>
+      <button class="btn primary" onclick="saveNeuesHandbuch()">Anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Referenz aus Handbuch verknüpfen (Schritt 1: Buch wählen) -->
+<div class="modalBg" id="modalRefPickBook">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Handbuch wählen</div>
+    <div class="hbSearchWrap">
+      <span style="color:var(--text-faint);">🔍</span>
+      <input type="text" id="refPickBookSearch" placeholder="Bücher durchsuchen…" oninput="renderRefPickBooks()">
+    </div>
+    <div id="refPickBookListe" style="max-height:50vh; overflow-y:auto;"></div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalRefPickBook')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Referenz aus Handbuch verknüpfen (Schritt 2: Seite wählen + Notiz) -->
+<div class="modalBg" id="modalRefPickPage">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Seite verknüpfen</div>
+    <div class="hbSearchWrap">
+      <span style="color:var(--text-faint);">🔍</span>
+      <input type="text" id="refPickPageSearch" placeholder="Seiten durchsuchen…" oninput="renderRefPickPages()">
+    </div>
+    <div id="refPickPageListe" style="max-height:38vh; overflow-y:auto; margin-bottom:12px;"></div>
+    <label>Bezeichnung dieser Referenz</label>
+    <input type="text" id="inpRefNotiz" placeholder="z.B. Anzugsmomente Vorderachse">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="backToRefPickBook()">← Anderes Buch</button>
+      <button class="btn primary" onclick="saveRefVerknuepfung()">Verknüpfen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 1: Ziel-Typ) -->
+<div class="modalBg" id="modalHbLinkType">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Wohin verknüpfen?</div>
+    <div class="btnRow">
+      <button class="btn ghost full" onclick="openHbLinkFahrzeug()">🚗 Baugruppe (an einem Fahrzeug)</button>
+    </div>
+    <div class="btnRow" style="margin-top:10px;">
+      <button class="btn ghost full" onclick="openHbLinkVorlage()">📋 Katalog-Vorlage</button>
+    </div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkType')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 2a: Fahrzeug wählen) -->
+<div class="modalBg" id="modalHbLinkFahrzeug">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Fahrzeug wählen</div>
+    <div id="hbLinkFahrzeugListe" style="max-height:50vh; overflow-y:auto;"></div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkFahrzeug'); openModal('modalHbLinkType');">← Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 2b: Baugruppe wählen) -->
+<div class="modalBg" id="modalHbLinkBaugruppe">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Baugruppe wählen</div>
+    <div id="hbLinkBaugruppeListe" style="max-height:50vh; overflow-y:auto;"></div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkBaugruppe'); openModal('modalHbLinkFahrzeug');">← Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 2c: Vorlage wählen) -->
+<div class="modalBg" id="modalHbLinkVorlage">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Vorlage wählen</div>
+    <div id="hbLinkVorlageListe" style="max-height:50vh; overflow-y:auto;"></div>
+    <div class="btnRow" style="margin-top:14px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkVorlage'); openModal('modalHbLinkType');">← Zurück</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Verknüpfen vom Handbuch aus (Schritt 3: Kategorie + Notiz) -->
+<div class="modalBg" id="modalHbLinkKategorie">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Als welche Kategorie?</div>
+    <div id="hbLinkZielInfo" style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;"></div>
+    <div class="btnRow">
+      <button class="btn ghost full" onclick="saveHbLinkVerknuepfung('anleitung')">🔧 Technische Anleitung</button>
+    </div>
+    <div class="btnRow" style="margin-top:8px;">
+      <button class="btn ghost full" onclick="saveHbLinkVerknuepfung('einstellwerte')">📐 Einstellwerte</button>
+    </div>
+    <div class="btnRow" style="margin-top:8px;">
+      <button class="btn ghost full" onclick="saveHbLinkVerknuepfung('anzugsmomente')">🔩 Anzugsmomente</button>
+    </div>
+    <div class="btnRow" style="margin-top:8px;">
+      <button class="btn ghost full" onclick="saveHbLinkVerknuepfung('sonstiges')">📎 Sonstiges</button>
+    </div>
+    <label style="margin-top:12px;">Bezeichnung (optional)</label>
+    <input type="text" id="inpHbLinkNotiz" placeholder="z.B. Anzugsmomente Vorderachse">
+    <div class="btnRow" style="margin-top:10px;">
+      <button class="btn ghost full" onclick="closeModal('modalHbLinkKategorie')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Neues Fahrzeug -->
+<div class="modalBg" id="modalFahrzeug">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Neues Fahrzeug</div>
+    <label>Modell</label>
+    <input type="text" id="inpModell" placeholder="z.B. W111 59-66">
+    <label>Fahrgestellnummer</label>
+    <input type="text" id="inpFgnr" placeholder="z.B. 111.021-12-345678">
+    <label>Kunde</label>
+    <input type="text" id="inpKunde" placeholder="Name">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalFahrzeug')">Abbrechen</button>
+      <button class="btn primary" onclick="saveNeuesFahrzeug()">Anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Neue Baugruppe -->
+<div class="modalBg" id="modalBaugruppe">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Neue Baugruppe</div>
+    <label>Typ</label>
+    <select id="inpBgTyp">
+      <option>Motor</option>
+      <option>Getriebe</option>
+      <option selected>Vorderachse</option>
+      <option>Achse hinten</option>
+      <option>Differenzial</option>
+      <option>Bremsen vorne</option>
+      <option>Bremsen hinten</option>
+      <option>Lenkung</option>
+      <option>Karosserie</option>
+      <option>Innenausstattung</option>
+      <option>Elektrik</option>
+      <option>Sonstiges</option>
+    </select>
+    <label>Bezeichnung (optional)</label>
+    <input type="text" id="inpBgBezeichnung" placeholder="z.B. Vorderachse links/rechts">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalBaugruppe')">Abbrechen</button>
+      <button class="btn primary" onclick="saveNeueBaugruppe()">Anlegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Vorlage laden -->
+<div class="modalBg" id="modalVorlageLaden">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Vorlage laden</div>
+    <div class="sub" style="margin:-4px 0 12px;">Passende Teileliste aus dem Katalog übernehmen</div>
+    <div id="vorlageAuswahlListe"></div>
+    <div class="btnRow">
+      <button class="btn ghost full" onclick="closeModal('modalVorlageLaden')">Schließen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Bestellauftrag benennen -->
+<div class="modalBg" id="modalBestellName">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Bestellauftrag anlegen</div>
+    <label>Bezeichnung</label>
+    <input type="text" id="inpBestellName" placeholder="z.B. Sammelbestellung KW27">
+    <label>Lieferant (optional)</label>
+    <input type="text" id="inpBestellLieferant" placeholder="z.B. Niemöller, Kienzle...">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalBestellName')">Abbrechen</button>
+      <button class="btn primary" onclick="confirmBestellungAnlegen()">Übernehmen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Extern-Auftrag benennen -->
+<div class="modalBg" id="modalExternName">
+  <div class="modalSheet">
+    <div class="modalHandle"></div>
+    <div class="modalTitle">Extern-Auftrag anlegen</div>
+    <label>Bezeichnung</label>
+    <input type="text" id="inpExternName" placeholder="z.B. Pulverbeschichten KW27">
+    <label>Art</label>
+    <select id="inpExternArt">
+      <option>Pulverbeschichten</option>
+      <option>Galvanik / Verzinken</option>
+      <option>Verchromen</option>
+      <option>Sandstrahlen</option>
+      <option>Sonstiges</option>
+    </select>
+    <label>Dienstleister (optional)</label>
+    <input type="text" id="inpExternDienstleister" placeholder="Firma">
+    <div class="btnRow">
+      <button class="btn ghost" onclick="closeModal('modalExternName')">Abbrechen</button>
+      <button class="btn primary" onclick="confirmExternAuftragAnlegen()">Übernehmen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============ CONFIG ============
+var SUPABASE_URL = "https://ysqzdqazcgyuzdorauiq.supabase.co";
+var SUPABASE_KEY = "sb_publishable_v4kXJa0y-2EHsCFPqBFHfg_QvzKLnt2";
+var CORRECT_PIN = "2503";
+var CLAUDE_PROXY_URL = SUPABASE_URL + "/functions/v1/claude-proxy";
+
+// ============ STATE ============
+var state = {
+  fahrzeuge: [],
+  vorlagen: [],
+  vorlageTeile: {},
+  aktivesFahrzeug: null,
+  aktiveBaugruppe: null,
+  aktiveBestellung: null,
+  instanzTeileCache: {},
+  bestellungen: [],
+  handbuecher: [],
+  aktivesHandbuch: null,
+  hbSeitenCache: {},
+  aktiveHbSeiteIdx: -1,
+  refCache: {},
+  refPickTarget: null,      // {type:'instanz'|'vorlage', id: ...}
+  refPickBuchId: null,
+  hbRueckweg: null          // {type:'instanz'|'vorlage', id:..., bg: obj / v: obj} - woher man in den Handbuch-Viewer kam
+};
+
+var STATUS_FLOW = ["zerlegt","geprueft","bestellt","wareneingang","fertigung","abgeschlossen"];
+var STATUS_LABEL = {zerlegt:"Zerlegt", geprueft:"Geprüft", bestellt:"Bestellt", wareneingang:"Wareneingang", fertigung:"Fertigung", abgeschlossen:"Abgeschlossen"};
+
+// ============ SUPABASE HELPERS ============
+function sbHeaders(){
+  return {
+    "apikey": SUPABASE_KEY,
+    "Authorization": "Bearer " + SUPABASE_KEY,
+    "Content-Type": "application/json"
+  };
+}
+function sbGet(path){
+  return fetch(SUPABASE_URL + "/rest/v1/" + path, {headers: sbHeaders()}).then(function(r){return r.json();});
+}
+function sbPost(table, body, returnRepr){
+  var h = sbHeaders();
+  if(returnRepr) h["Prefer"] = "return=representation";
+  return fetch(SUPABASE_URL + "/rest/v1/" + table, {method:"POST", headers:h, body:JSON.stringify(body)}).then(function(r){return r.json();});
+}
+function sbPatch(table, filter, body){
+  var h = sbHeaders();
+  h["Prefer"] = "return=representation";
+  return fetch(SUPABASE_URL + "/rest/v1/" + table + "?" + filter, {method:"PATCH", headers:h, body:JSON.stringify(body)})
+    .then(function(r){
+      if(!r.ok){
+        return r.text().then(function(t){
+          console.error("sbPatch failed", r.status, t);
+          return null;
+        });
+      }
+      return r.text().then(function(t){
+        if(!t){ return []; }
+        try{ return JSON.parse(t); } catch(e){ return null; }
+      });
+    })
+    .catch(function(err){ console.error("sbPatch network error", err); return null; });
+}
+function sbDelete(table, filter){
+  return fetch(SUPABASE_URL + "/rest/v1/" + table + "?" + filter, {method:"DELETE", headers:sbHeaders()});
+}
+
+// ============ PIN ============
+var pinEntered = "";
+function buildPinPad(){
+  var pad = document.getElementById("pinPad");
+  var keys = ["1","2","3","4","5","6","7","8","9","","0","⌫"];
+  pad.innerHTML = "";
+  keys.forEach(function(k){
+    var btn = document.createElement("div");
+    if(k === ""){ btn.style.visibility="hidden"; }
+    else{
+      btn.className = "pinBtn";
+      btn.textContent = k;
+      btn.onclick = function(){ handlePinKey(k); };
+    }
+    pad.appendChild(btn);
+  });
+  renderPinDots();
+}
+function renderPinDots(){
+  var wrap = document.getElementById("pinDots");
+  wrap.innerHTML = "";
+  for(var i=0;i<4;i++){
+    var d = document.createElement("div");
+    d.className = "pinDot" + (i < pinEntered.length ? " filled" : "");
+    wrap.appendChild(d);
+  }
+}
+function handlePinKey(k){
+  if(k === "⌫"){ pinEntered = pinEntered.slice(0,-1); renderPinDots(); return; }
+  if(pinEntered.length >= 4) return;
+  pinEntered += k;
+  renderPinDots();
+  if(pinEntered.length === 4){
+    setTimeout(function(){
+      if(pinEntered === CORRECT_PIN){
+        document.getElementById("pinScreen").style.display = "none";
+        initApp();
+      } else {
+        pinEntered = "";
+        renderPinDots();
+      }
+    }, 150);
+  }
+}
+
+// ============ NAV ============
+function goTo(tab){
+  document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
+  document.querySelectorAll(".tabbtn").forEach(function(t){ t.classList.remove("active"); });
+  var map = {fahrzeuge:"view-fahrzeuge", bestellungen:"view-bestellungen", vorlagen:"view-vorlagen", handbuch:"view-handbuch"};
+  document.getElementById(map[tab]).classList.add("active");
+  var tb = document.querySelector('.tabbtn[data-tab="'+tab+'"]');
+  if(tb) tb.classList.add("active");
+  document.getElementById("fabAdd").style.display = (tab === "fahrzeuge") ? "flex" : "none";
+  if(tab === "bestellungen") loadBestellungen();
+  if(tab === "vorlagen") renderVorlagenView();
+  if(tab === "handbuch") loadHandbuecher();
+}
+function showView(id){
+  document.querySelectorAll(".view").forEach(function(v){ v.classList.remove("active"); });
+  document.getElementById(id).classList.add("active");
+  document.getElementById("fabAdd").style.display = "none";
+}
+
+function toast(msg, type){
+  var t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className = "toast show" + (type ? " "+type : "");
+  setTimeout(function(){ t.className = "toast"; }, 2200);
+}
+
+// ============ INIT ============
+function initApp(){
+  loadFahrzeuge();
+  loadVorlagen();
+  loadHandbuecher();
+  updateHeaderStats();
+}
+
+function updateHeaderStats(){
+  sbGet("bg_instanz_teile?select=zustand,bestellen&bestellen=eq.true").then(function(rows){
+    document.getElementById("statOffen").textContent = rows ? rows.length : 0;
+  });
+  sbGet("bg_bestellauftraege?select=id&status=eq.bestellt").then(function(rows){
+    document.getElementById("statBestellt").textContent = rows ? rows.length : 0;
+  });
+}
+
+// ============ FAHRZEUGE ============
+function loadFahrzeuge(){
+  sbGet("bg_fahrzeuge?select=*&order=created_at.desc").then(function(rows){
+    state.fahrzeuge = rows || [];
+    renderFahrzeugListe();
+  });
+}
+function renderFahrzeugListe(){
+  var wrap = document.getElementById("fahrzeugListe");
+  if(!state.fahrzeuge.length){
+    wrap.innerHTML = '<div class="emptyState"><div class="icon">🚗</div><p>Noch kein Fahrzeug angelegt.</p><p>Tippe unten rechts auf + um zu starten.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  state.fahrzeuge.forEach(function(fz){
+    var el = document.createElement("div");
+    el.className = "card tap";
+    el.onclick = function(){ openFahrzeugDetail(fz.id); };
+    el.innerHTML =
+      '<div class="fzCard">' +
+        '<div class="fzMain">' +
+          '<div class="fzTitle">' + escapeHtml(fz.modell) + '</div>' +
+          '<div class="fzMeta">' + (fz.fahrgestellnr ? escapeHtml(fz.fahrgestellnr) : '—') + '</div>' +
+          (fz.kunde ? '<div class="fzKunde">' + escapeHtml(fz.kunde) + '</div>' : '') +
+        '</div>' +
+        '<span class="badge ' + fz.status + '">' + fz.status + '</span>' +
+      '</div>';
+    wrap.appendChild(el);
+  });
+}
+
+function openNeuesFahrzeug(){
+  document.getElementById("inpModell").value = "";
+  document.getElementById("inpFgnr").value = "";
+  document.getElementById("inpKunde").value = "";
+  openModal("modalFahrzeug");
+}
+function saveNeuesFahrzeug(){
+  var modell = document.getElementById("inpModell").value.trim();
+  if(!modell){ toast("Modell fehlt", "err"); return; }
+  var body = {
+    modell: modell,
+    fahrgestellnr: document.getElementById("inpFgnr").value.trim(),
+    kunde: document.getElementById("inpKunde").value.trim()
+  };
+  sbPost("bg_fahrzeuge", body, true).then(function(res){
+    closeModal("modalFahrzeug");
+    toast("Fahrzeug angelegt", "ok");
+    loadFahrzeuge();
+  });
+}
+
+function openFahrzeugDetail(id){
+  var fz = state.fahrzeuge.filter(function(f){ return f.id === id; })[0];
+  if(!fz) return;
+  state.aktivesFahrzeug = fz;
+  document.getElementById("fzDetailTitle").textContent = fz.modell;
+  document.getElementById("fzInfoCard").innerHTML =
+    '<div class="fzMeta" style="margin-bottom:4px;">' + (fz.fahrgestellnr || 'Keine Fahrgestellnummer') + '</div>' +
+    '<div style="font-size:13px; color:var(--text-dim);">' + (fz.kunde || 'Kein Kunde hinterlegt') + '</div>';
+  showView("view-fahrzeugDetail");
+  loadBaugruppen(id);
+}
+
+function loadBaugruppen(fahrzeugId){
+  sbGet("bg_instanzen?select=*&fahrzeug_id=eq." + fahrzeugId + "&order=created_at.asc").then(function(rows){
+    renderBaugruppenListe(rows || []);
+  });
+}
+function renderBaugruppenListe(rows){
+  var wrap = document.getElementById("baugruppenListe");
+  if(!rows.length){
+    wrap.innerHTML = '<div class="emptyState"><div class="icon">🔩</div><p>Noch keine Baugruppe erfasst.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  rows.forEach(function(bg){
+    var el = document.createElement("div");
+    el.className = "bgRow";
+    el.onclick = function(){ openBaugruppeDetail(bg); };
+    el.innerHTML =
+      '<div class="dot ' + bg.status + '"></div>' +
+      '<div class="bgName">' + escapeHtml(bg.baugruppen_typ) + (bg.bezeichnung ? ' · ' + escapeHtml(bg.bezeichnung) : '') + '</div>' +
+      '<div class="bgStatus">' + (STATUS_LABEL[bg.status] || bg.status) + '</div>' +
+      '<div class="arrow">›</div>';
+    wrap.appendChild(el);
+  });
+}
+
+function openNeueBaugruppe(){
+  document.getElementById("inpBgBezeichnung").value = "";
+  openModal("modalBaugruppe");
+}
+function saveNeueBaugruppe(){
+  var typ = document.getElementById("inpBgTyp").value;
+  var bez = document.getElementById("inpBgBezeichnung").value.trim();
+  var body = {
+    fahrzeug_id: state.aktivesFahrzeug.id,
+    baugruppen_typ: typ,
+    bezeichnung: bez
+  };
+  sbPost("bg_instanzen", body, true).then(function(res){
+    closeModal("modalBaugruppe");
+    toast("Baugruppe angelegt", "ok");
+    loadBaugruppen(state.aktivesFahrzeug.id);
+  });
+}
+
+function backToFahrzeug(){
+  showView("view-fahrzeugDetail");
+}
+
+// ============ BAUGRUPPEN-DETAIL ============
+function openBaugruppeDetail(bg){
+  state.aktiveBaugruppe = bg;
+  state.teileEditMode = false;
+  document.getElementById("bgDetailTitle").textContent = bg.baugruppen_typ + (bg.bezeichnung ? " · " + bg.bezeichnung : "");
+  document.getElementById("bgNotizen").value = bg.notizen || "";
+  renderStatusStrip(bg.status);
+  renderPhotoBox(bg);
+  renderKiBox(bg);
+  renderInstRefPhotoBox(bg);
+  showView("view-bgDetail");
+  loadInstanzTeile(bg.id);
+  resetRefCatStates("instanz");
+  loadReferenzen("instanz", bg.id).then(function(){ renderAlleRefListen("instanz", bg.id); });
+}
+
+function renderStatusStrip(current){
+  var wrap = document.getElementById("statusStrip");
+  wrap.innerHTML = "";
+  var idx = STATUS_FLOW.indexOf(current);
+  STATUS_FLOW.forEach(function(s, i){
+    var chip = document.createElement("div");
+    chip.className = "statusChip" + (s === current ? " current" : (i < idx ? " done" : ""));
+    chip.textContent = STATUS_LABEL[s];
+    chip.onclick = function(){ setBaugruppenStatus(s); };
+    wrap.appendChild(chip);
+  });
+}
+function setBaugruppenStatus(status){
+  sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {status: status}).then(function(res){
+    state.aktiveBaugruppe.status = status;
+    renderStatusStrip(status);
+    toast("Status: " + STATUS_LABEL[status], "ok");
+  });
+}
+
+function renderPhotoBox(bg){
+  var box = document.getElementById("photoBox");
+  if(bg.foto_url){
+    box.innerHTML = '<img src="' + bg.foto_url + '"><input type="file" accept="image/*" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">';
+  } else {
+    box.innerHTML = '<div class="icon">📷</div><div class="hint">Foto der Baugruppe aufnehmen</div><input type="file" accept="image/*" id="photoInput" style="display:none" onchange="onPhotoSelected(event)">';
+  }
+}
+function triggerPhoto(){
+  document.getElementById("photoInput").click();
+}
+// ============ BILD-KOMPRIMIERUNG ============
+// Verkleinert/komprimiert Bilder vor dem Speichern, damit Fotomediathek-Bilder
+// (oft mehrere MB, hohe Auflösung) nicht am Request-Limit von Supabase scheitern.
+function komprimiereBild(file, callback){
+  var reader = new FileReader();
+  reader.onload = function(ev){
+    var img = new Image();
+    img.onload = function(){
+      try{
+        var maxDim = 1600;
+        var w = img.width, h = img.height;
+        if(!w || !h){ callback(ev.target.result); return; }
+        if(w > maxDim || h > maxDim){
+          if(w > h){ h = Math.round(h * maxDim / w); w = maxDim; }
+          else { w = Math.round(w * maxDim / h); h = maxDim; }
+        }
+        var canvas = document.createElement("canvas");
+        canvas.width = w; canvas.height = h;
+        var ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+        if(!dataUrl || dataUrl.length < 100){ callback(ev.target.result); return; }
+        callback(dataUrl);
+      } catch(err){
+        callback(ev.target.result);
+      }
+    };
+    img.onerror = function(){ callback(ev.target.result); };
+    img.src = ev.target.result;
+  };
+  reader.onerror = function(){ toast("Bild konnte nicht gelesen werden", "err"); };
+  reader.readAsDataURL(file);
+}
+
+function onPhotoSelected(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  document.getElementById("photoBox").innerHTML = '<div class="icon">⏳</div><div class="hint">Bild wird verarbeitet...</div>';
+  komprimiereBild(file, function(dataUrl){
+    document.getElementById("photoBox").innerHTML = '<img src="' + dataUrl + '">';
+    sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {foto_url: dataUrl}).then(function(res){
+      if(!res){ toast("Speichern fehlgeschlagen", "err"); renderPhotoBox(state.aktiveBaugruppe); return; }
+      state.aktiveBaugruppe.foto_url = dataUrl;
+      analysiereFoto(dataUrl);
+    });
+  });
+}
+
+function renderKiBox(bg){
+  var wrap = document.getElementById("kiBoxWrap");
+  if(bg.ki_vorschlag){
+    wrap.innerHTML = '<div class="kiBox"><div class="kiLabel">🤖 KI-Einschätzung</div>' + escapeHtml(bg.ki_vorschlag) + '</div>';
+  } else {
+    wrap.innerHTML = "";
+  }
+}
+
+// Referenzbild pro Instanz: KEINE KI-Analyse, wird zusätzlich in verknüpfte Vorlage übernommen
+function renderInstRefPhotoBox(bg){
+  var box = document.getElementById("instRefPhotoBox");
+  if(bg.referenzbild_url){
+    box.className = "refPhotoBox hasImg";
+    box.innerHTML = '<img src="' + bg.referenzbild_url + '"><input type="file" accept="image/*" id="instRefPhotoInput" style="display:none" onchange="onInstRefPhotoSelected(event)">';
+  } else {
+    box.className = "refPhotoBox";
+    box.style.minHeight = "100px";
+    box.innerHTML = '<div class="icon">🖼️</div><div class="hint">Referenzbild / Katalogzeichnung (ohne KI-Analyse)</div><input type="file" accept="image/*" id="instRefPhotoInput" style="display:none" onchange="onInstRefPhotoSelected(event)">';
+  }
+}
+function handleInstRefPhotoClick(){
+  if(state.aktiveBaugruppe.referenzbild_url){
+    openZoom(state.aktiveBaugruppe.referenzbild_url);
+  } else {
+    document.getElementById("instRefPhotoInput").click();
+  }
+}
+function onInstRefPhotoSelected(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var box = document.getElementById("instRefPhotoBox");
+  box.innerHTML = '<div class="icon">⏳</div><div class="hint">Bild wird verarbeitet...</div>';
+  komprimiereBild(file, function(dataUrl){
+    var bg = state.aktiveBaugruppe;
+    sbPatch("bg_instanzen", "id=eq." + bg.id, {referenzbild_url: dataUrl}).then(function(res){
+      if(!res){ toast("Speichern fehlgeschlagen — Bild evtl. zu groß", "err"); renderInstRefPhotoBox(bg); return; }
+      bg.referenzbild_url = dataUrl;
+      renderInstRefPhotoBox(bg);
+      toast("Referenzbild gespeichert", "ok");
+      // Automatische Übernahme in verknüpfte Vorlage, falls dort noch keins hinterlegt ist
+      if(bg.vorlage_id){
+        sbGet("bg_vorlagen?select=id,referenzbild_url&id=eq." + bg.vorlage_id).then(function(rows){
+          if(rows && rows[0] && !rows[0].referenzbild_url){
+            sbPatch("bg_vorlagen", "id=eq." + bg.vorlage_id, {referenzbild_url: dataUrl}).then(function(){
+              var idx = state.vorlagen.findIndex(function(x){ return x.id === bg.vorlage_id; });
+              if(idx > -1) state.vorlagen[idx].referenzbild_url = dataUrl;
+              toast("Auch im Katalog hinterlegt", "ok");
+            });
+          }
+        });
+      }
+    });
+  });
+}
+
+function analysiereFoto(dataUrl){
+  var wrap = document.getElementById("kiBoxWrap");
+  wrap.innerHTML = '<div class="kiBox"><div class="kiLabel"><span class="kiSpin"></span> Analysiere Foto...</div></div>';
+
+  var base64 = dataUrl.split(",")[1];
+  var mediaType = dataUrl.split(";")[0].split(":")[1];
+
+  var fz = state.aktivesFahrzeug;
+  var bg = state.aktiveBaugruppe;
+
+  var prompt = "Du bist Experte für Oldtimer-Restaurierung, speziell Mercedes-Benz Klassiker. " +
+    "Auf dem Foto ist eine ausgebaute Baugruppe eines " + fz.modell + " zu sehen, vermutlich: " + bg.baugruppen_typ + ". " +
+    "Beschreibe in maximal 4 knappen Sätzen: (1) ob das Foto zur erwarteten Baugruppe passt, " +
+    "(2) auffällige sichtbare Verschleiß- oder Schadensmerkmale, (3) worauf bei der Detailprüfung besonders zu achten ist. " +
+    "Schreibe auf Deutsch, sachlich, wie eine Werkstattnotiz. Keine Einleitung, direkt loslegen.";
+
+  fetch(CLAUDE_PROXY_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 400,
+      messages: [{
+        role: "user",
+        content: [
+          {type:"image", source:{type:"base64", media_type: mediaType, data: base64}},
+          {type:"text", text: prompt}
+        ]
+      }]
+    })
+  }).then(function(r){ return r.json(); })
+    .then(function(data){
+      var textBlocks = (data.content || []).filter(function(b){ return b.type === "text"; }).map(function(b){ return b.text; });
+      var result = textBlocks.join("\n") || "Keine Einschätzung erhalten.";
+      wrap.innerHTML = '<div class="kiBox"><div class="kiLabel">🤖 KI-Einschätzung</div>' + escapeHtml(result).replace(/\n/g,"<br>") + '</div>';
+      sbPatch("bg_instanzen", "id=eq." + bg.id, {ki_vorschlag: result}).then(function(){
+        bg.ki_vorschlag = result;
+      });
+    })
+    .catch(function(err){
+      wrap.innerHTML = '<div class="kiBox"><div class="kiLabel">🤖 KI-Einschätzung</div>Analyse fehlgeschlagen. Foto ist trotzdem gespeichert.</div>';
+    });
+}
+
+// ============ TEILELISTE ============
+function loadInstanzTeile(instanzId){
+  sbGet("bg_instanz_teile?select=*&instanz_id=eq." + instanzId).then(function(rows){
+    var sorted = sortByTeilenummer(rows || []);
+    state.instanzTeileCache[instanzId] = sorted;
+    renderTeileListe(sorted);
+  });
+}
+state.teileEditMode = false;
+function toggleTeileEditMode(){
+  state.teileEditMode = !state.teileEditMode;
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  renderTeileListe(rows);
+}
+function renderTeileListe(rows){
+  var card = document.getElementById("teileCard");
+  var countLabel = document.getElementById("teilCount");
+  countLabel.innerHTML = (rows.length ? (rows.length + " Positionen ") : "") +
+    '<span class="editModeToggle" style="margin-left:8px; cursor:pointer;" onclick="toggleTeileEditMode()">' + (state.teileEditMode ? "Fertig" : "✎ Bearbeiten") + '</span>';
+  if(!rows.length){
+    card.innerHTML = '<div class="emptyState" style="padding:30px 10px;"><div class="icon">📋</div><p>Noch keine Teile erfasst.</p><p>Lade eine Vorlage oder füge Teile manuell hinzu.</p></div>';
+    return;
+  }
+  card.innerHTML = "";
+
+  if(state.teileEditMode){
+    rows.forEach(function(t, idx){
+      var row = document.createElement("div");
+      row.className = "editTeilRow";
+      row.style.margin = "10px 0";
+      row.innerHTML =
+        '<div class="editTeilGrid">' +
+          '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-id="' + t.id + '">' +
+          '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-id="' + t.id + '">' +
+          '<input type="number" min="1" placeholder="Menge" value="' + (t.menge || 1) + '" data-field="menge" data-id="' + t.id + '">' +
+        '</div>' +
+        '<div class="editTeilGrid2">' +
+          '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-id="' + t.id + '">' +
+          '<input type="text" placeholder="Hinweis" value="' + escapeAttr(t.hinweis) + '" data-field="hinweis" data-id="' + t.id + '">' +
+        '</div>' +
+        '<div class="editTeilFoot">' +
+          '<label class="inlineChk"><input type="checkbox" data-field="verschleissteil" data-id="' + t.id + '" ' + (t.verschleissteil ? 'checked' : '') + '> Verschleißteil</label>' +
+          '<div class="removeTeilBtn" data-id="' + t.id + '">✕</div>' +
+        '</div>';
+      card.appendChild(row);
+    });
+    card.querySelectorAll("input[data-field]").forEach(function(inp){
+      var evt = inp.type === "checkbox" ? "change" : "blur";
+      inp.addEventListener(evt, function(){
+        var id = inp.getAttribute("data-id");
+        var field = inp.getAttribute("data-field");
+        var val = inp.type === "checkbox" ? inp.checked : (inp.type === "number" ? (parseInt(inp.value, 10) || 1) : inp.value);
+        var body = {}; body[field] = val;
+        sbPatch("bg_instanz_teile", "id=eq." + id, body).then(function(){
+          var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+          arr.forEach(function(r){ if(r.id === id) r[field] = val; });
+        });
+      });
+    });
+    card.querySelectorAll(".removeTeilBtn").forEach(function(btn){
+      btn.onclick = function(){
+        var id = btn.getAttribute("data-id");
+        sbDelete("bg_instanz_teile", "id=eq." + id).then(function(){
+          var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+          state.instanzTeileCache[state.aktiveBaugruppe.id] = arr.filter(function(r){ return r.id !== id; });
+          renderTeileListe(state.instanzTeileCache[state.aktiveBaugruppe.id]);
+          toast("Teil gelöscht", "ok");
+        });
+      };
+    });
+    var addBtn = document.createElement("button");
+    addBtn.className = "addTeilBtn";
+    addBtn.textContent = "+ Teil hinzufügen";
+    addBtn.onclick = function(){
+      sbPost("bg_instanz_teile", {
+        instanz_id: state.aktiveBaugruppe.id, position: rows.length,
+        bezeichnung: "Neues Teil", zustand: "offen"
+      }, true).then(function(res){
+        if(res && res[0]){
+          state.instanzTeileCache[state.aktiveBaugruppe.id].push(res[0]);
+          renderTeileListe(state.instanzTeileCache[state.aktiveBaugruppe.id]);
+        }
+      });
+    };
+    card.appendChild(addBtn);
+    return;
+  }
+
+  rows.forEach(function(t){
+    var row = document.createElement("div");
+    row.className = "teilItem";
+    row.style.flexWrap = "wrap";
+    var zeigtMassnahme = (t.zustand === "verschlissen" || t.zustand === "defekt");
+    var massnahmeLabel = {bestellen:"Neu bestellen", intern:"Intern überarbeiten", extern:"Extern (Beschichten/Galvanik)"};
+    row.innerHTML =
+      '<div class="teilMain">' +
+        '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + '</div>' +
+        (t.bestellnummer ? '<div class="teilHint">Bestell-Nr: ' + escapeHtml(t.bestellnummer) + (t.hinweis ? ' · ' + escapeHtml(t.hinweis) : '') + '</div>' : (t.hinweis ? '<div class="teilHint">' + escapeHtml(t.hinweis) + '</div>' : '')) +
+      '</div>' +
+      '<input type="number" min="1" class="mengeInlineInput" data-teil-id="' + t.id + '" value="' + (t.menge || 1) + '" style="width:44px; text-align:center; padding:6px 4px; font-size:13px; border-radius:8px; background:var(--bg-elevated); border:1px solid var(--line); color:var(--text); margin-right:6px;">' +
+      '<div class="zustandPicker">' +
+        '<div class="zBtn ok ' + (t.zustand==='ok'?'active':'') + '" data-z="ok">✓</div>' +
+        '<div class="zBtn verschlissen ' + (t.zustand==='verschlissen'?'active':'') + '" data-z="verschlissen">△</div>' +
+        '<div class="zBtn defekt ' + (t.zustand==='defekt'?'active':'') + '" data-z="defekt">✕</div>' +
+      '</div>' +
+      (zeigtMassnahme ? (
+        '<div style="width:100%; display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' +
+          ['bestellen','intern','extern'].map(function(m){
+            return '<div class="statusChip massnahmeChip' + (t.massnahme===m ? ' current' : '') + '" data-m="' + m + '" style="font-size:10.5px; padding:5px 10px; cursor:pointer;">' + massnahmeLabel[m] + '</div>';
+          }).join('') +
+        '</div>'
+      ) : '');
+    row.querySelectorAll(".zBtn").forEach(function(btn){
+      btn.onclick = function(){ setTeilZustand(t.id, btn.getAttribute("data-z")); };
+    });
+    row.querySelectorAll(".massnahmeChip").forEach(function(chip){
+      chip.onclick = function(){ setTeilMassnahme(t.id, chip.getAttribute("data-m")); };
+    });
+    var mengeInp = row.querySelector(".mengeInlineInput");
+    mengeInp.addEventListener("blur", function(){
+      var neu = parseInt(mengeInp.value, 10) || 1;
+      sbPatch("bg_instanz_teile", "id=eq." + t.id, {menge: neu}).then(function(){
+        var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+        arr.forEach(function(r){ if(r.id === t.id) r.menge = neu; });
+      });
+    });
+    card.appendChild(row);
+  });
+}
+function setTeilZustand(teilId, zustand){
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  var teil = rows.filter(function(r){ return r.id === teilId; })[0];
+  var body = {zustand: zustand};
+  // Bei Wechsel zu ok: Maßnahme zurücksetzen. Bei verschlissen/defekt ohne bisherige Maßnahme: Default "bestellen"
+  if(zustand === "ok"){
+    body.massnahme = null; body.bestellen = false; body.externauftrag_id = null;
+  } else if(!teil.massnahme){
+    body.massnahme = "bestellen"; body.bestellen = true;
+  }
+  sbPatch("bg_instanz_teile", "id=eq." + teilId, body).then(function(){
+    Object.keys(body).forEach(function(k){ teil[k] = body[k]; });
+    renderTeileListe(rows);
+    updateHeaderStats();
+  });
+}
+function setTeilMassnahme(teilId, massnahme){
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  var teil = rows.filter(function(r){ return r.id === teilId; })[0];
+  var bestellen = (massnahme === "bestellen");
+  sbPatch("bg_instanz_teile", "id=eq." + teilId, {massnahme: massnahme, bestellen: bestellen}).then(function(){
+    teil.massnahme = massnahme; teil.bestellen = bestellen;
+    renderTeileListe(rows);
+    updateHeaderStats();
+  });
+}
+
+// ============ VORLAGE LADEN ============
+function loadVorlagen(){
+  sbGet("bg_vorlagen?select=*&aktiv=eq.true&order=modell.asc").then(function(rows){
+    state.vorlagen = rows || [];
+  });
+}
+function openVorlageLaden(){
+  var wrap = document.getElementById("vorlageAuswahlListe");
+  var fzModell = state.aktivesFahrzeug ? state.aktivesFahrzeug.modell : "";
+  var bgTyp = state.aktiveBaugruppe ? state.aktiveBaugruppe.baugruppen_typ : "";
+  var passend = state.vorlagen.filter(function(v){ return v.modell === fzModell && v.baugruppen_typ === bgTyp; });
+  var andere = state.vorlagen.filter(function(v){ return !(v.modell === fzModell && v.baugruppen_typ === bgTyp); });
+
+  wrap.innerHTML = "";
+  if(passend.length){
+    var lbl = document.createElement("div");
+    lbl.className = "sectionLabel";
+    lbl.style.margin = "0 0 8px";
+    lbl.textContent = "Passend für " + fzModell + " · " + bgTyp;
+    wrap.appendChild(lbl);
+    passend.forEach(function(v){ wrap.appendChild(vorlageOption(v)); });
+  }
+  if(andere.length){
+    var lbl2 = document.createElement("div");
+    lbl2.className = "sectionLabel";
+    lbl2.style.margin = "16px 0 8px";
+    lbl2.textContent = "Andere Vorlagen";
+    wrap.appendChild(lbl2);
+    andere.forEach(function(v){ wrap.appendChild(vorlageOption(v)); });
+  }
+  if(!state.vorlagen.length){
+    wrap.innerHTML = '<div class="emptyState"><p>Noch keine Vorlagen im Katalog.</p></div>';
+  }
+  openModal("modalVorlageLaden");
+}
+function vorlageOption(v){
+  var el = document.createElement("div");
+  el.className = "card tap";
+  el.style.marginBottom = "8px";
+  el.innerHTML = '<div class="fzTitle" style="font-size:14px;">' + escapeHtml(v.name) + '</div><div class="fzMeta">' + escapeHtml(v.modell) + ' · ' + escapeHtml(v.baugruppen_typ) + '</div>';
+  el.onclick = function(){ applyVorlage(v.id); };
+  return el;
+}
+function applyVorlage(vorlageId){
+  sbGet("bg_vorlage_teile?select=*&vorlage_id=eq." + vorlageId).then(function(teile){
+    teile = sortByTeilenummer(teile || []);
+    if(!teile || !teile.length){ toast("Vorlage ist leer", "err"); return; }
+    var neueTeile = teile.map(function(t, i){
+      return {
+        instanz_id: state.aktiveBaugruppe.id,
+        position: i,
+        bezeichnung: t.bezeichnung,
+        teilenummer: t.teilenummer,
+        bestellnummer: t.bestellnummer,
+        menge: t.menge || 1,
+        verschleissteil: t.verschleissteil,
+        hinweis: t.hinweis,
+        zustand: "offen"
+      };
+    });
+    sbPost("bg_instanz_teile", neueTeile, true).then(function(){
+      sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {vorlage_id: vorlageId}).then(function(){});
+      closeModal("modalVorlageLaden");
+      toast(teile.length + " Teile übernommen", "ok");
+      loadInstanzTeile(state.aktiveBaugruppe.id);
+    });
+  });
+}
+
+// ============ BESTELLUNG ============
+function teileZuBestellungUebernehmen(){
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  var zuBestellen = rows.filter(function(r){ return r.bestellen && !r.bestellauftrag_id; });
+  if(!zuBestellen.length){
+    toast("Keine offenen Teile markiert (△ / ✕ setzen)", "err");
+    return;
+  }
+  state.pendingBestellTeile = zuBestellen;
+  document.getElementById("inpBestellName").value = state.aktivesFahrzeug.modell + " · " + state.aktiveBaugruppe.baugruppen_typ;
+  document.getElementById("inpBestellLieferant").value = "";
+  openModal("modalBestellName");
+}
+function confirmBestellungAnlegen(){
+  var name = document.getElementById("inpBestellName").value.trim();
+  var lieferant = document.getElementById("inpBestellLieferant").value.trim();
+  sbPost("bg_bestellauftraege", {bezeichnung: name, lieferant: lieferant, status: "offen"}, true).then(function(res){
+    var auftragId = res[0].id;
+    var ids = state.pendingBestellTeile.map(function(t){ return t.id; });
+    var updates = ids.map(function(id){
+      return sbPatch("bg_instanz_teile", "id=eq." + id, {bestellauftrag_id: auftragId});
+    });
+    Promise.all(updates).then(function(){
+      closeModal("modalBestellName");
+      toast("Bestellauftrag angelegt", "ok");
+      setBaugruppenStatus("bestellt");
+      loadInstanzTeile(state.aktiveBaugruppe.id);
+      updateHeaderStats();
+    });
+  });
+}
+
+function loadBestellungen(){
+  sbGet("bg_bestellauftraege?select=*&order=created_at.desc").then(function(rows){
+    state.bestellungen = rows || [];
+    renderBestellListe();
+  });
+}
+function renderBestellListe(){
+  var wrap = document.getElementById("bestellListe");
+  if(!state.bestellungen.length){
+    wrap.innerHTML = '<div class="emptyState"><div class="icon">📦</div><p>Noch keine Bestellaufträge.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  state.bestellungen.forEach(function(b){
+    var el = document.createElement("div");
+    el.className = "card tap";
+    el.onclick = function(){ openBestellDetail(b); };
+    el.innerHTML =
+      '<div class="fzCard">' +
+        '<div class="fzMain">' +
+          '<div class="fzTitle">' + escapeHtml(b.bezeichnung || "Bestellauftrag") + '</div>' +
+          '<div class="fzMeta">' + (b.lieferant || 'Kein Lieferant hinterlegt') + '</div>' +
+        '</div>' +
+        '<span class="badge ' + (b.status === 'komplett' ? 'abgeschlossen' : 'aktiv') + '">' + b.status + '</span>' +
+      '</div>';
+    wrap.appendChild(el);
+  });
+}
+
+function openBestellDetail(b){
+  state.aktiveBestellung = b;
+  document.getElementById("bestellDetailTitle").textContent = b.bezeichnung || "Bestellauftrag";
+  document.getElementById("bestellInfoCard").innerHTML =
+    '<div class="fzMeta">' + (b.lieferant || 'Kein Lieferant hinterlegt') + '</div>' +
+    '<div style="margin-top:6px;"><span class="badge aktiv">' + b.status + '</span></div>';
+  showView("view-bestellDetail");
+  loadBestellPositionen(b.id);
+}
+function loadBestellPositionen(auftragId){
+  sbGet("bg_instanz_teile?select=*,bg_instanzen(baugruppen_typ,fahrzeug_id)&bestellauftrag_id=eq." + auftragId).then(function(rows){
+    renderBestellPositionen(rows || []);
+  });
+}
+function renderBestellPositionen(rows){
+  var wrap = document.getElementById("bestellPositionen");
+  if(!rows.length){
+    wrap.innerHTML = '<div class="emptyState"><p>Keine Positionen.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  rows.forEach(function(t){
+    var el = document.createElement("div");
+    el.className = "card";
+    el.style.padding = "12px 14px";
+    el.style.marginBottom = "8px";
+    var bgInfo = t.bg_instanzen ? t.bg_instanzen.baugruppen_typ : "";
+    el.innerHTML =
+      '<div class="orderTeil" style="border:none; padding:0;">' +
+        '<div>' +
+          '<div class="teilName">' + escapeHtml(t.bezeichnung) + (t.menge && t.menge > 1 ? ' <span style="color:var(--accent); font-weight:700; font-size:12px;">× ' + t.menge + '</span>' : '') + '</div>' +
+          '<div class="teilHint">' + escapeHtml(bgInfo) + (t.zustand ? ' · ' + t.zustand : '') + (t.bestellnummer ? ' · Nr. ' + escapeHtml(t.bestellnummer) : '') + '</div>' +
+        '</div>' +
+        '<div class="otWe ' + (t.wareneingang ? 'on' : '') + '" data-id="' + t.id + '">✓</div>' +
+      '</div>';
+    el.querySelector(".otWe").onclick = function(){
+      toggleWareneingang(t.id, !t.wareneingang);
+    };
+    wrap.appendChild(el);
+  });
+}
+function toggleWareneingang(teilId, neu){
+  sbPatch("bg_instanz_teile", "id=eq." + teilId, {wareneingang: neu}).then(function(){
+    loadBestellPositionen(state.aktiveBestellung.id);
+  });
+}
+function bestellungAbschliessen(){
+  sbPatch("bg_bestellauftraege", "id=eq." + state.aktiveBestellung.id, {status: "komplett"}).then(function(){
+    toast("Bestellauftrag abgeschlossen — Fertigung kann starten", "ok");
+    state.aktiveBestellung.status = "komplett";
+    document.getElementById("bestellInfoCard").innerHTML =
+      '<div class="fzMeta">' + (state.aktiveBestellung.lieferant || 'Kein Lieferant hinterlegt') + '</div>' +
+      '<div style="margin-top:6px;"><span class="badge abgeschlossen">komplett</span></div>';
+  });
+}
+
+// ============ AUFTRAGS-TABS (Bestellung / Extern) ============
+function switchAuftragTab(tab){
+  document.getElementById("tabBestellungen").classList.toggle("current", tab === "bestellung");
+  document.getElementById("tabExtern").classList.toggle("current", tab === "extern");
+  document.getElementById("bestellListe").style.display = (tab === "bestellung") ? "block" : "none";
+  document.getElementById("externListe").style.display = (tab === "extern") ? "block" : "none";
+  if(tab === "extern") loadExternAuftraege();
+}
+
+// ============ EXTERN-AUFTRÄGE (Pulverbeschichten, Galvanik, etc.) ============
+function teileZuExternUebernehmen(){
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  var zuExtern = rows.filter(function(r){ return r.massnahme === "extern" && !r.externauftrag_id; });
+  if(!zuExtern.length){
+    toast("Keine Teile mit Maßnahme 'Extern' markiert", "err");
+    return;
+  }
+  state.pendingExternTeile = zuExtern;
+  document.getElementById("inpExternName").value = state.aktivesFahrzeug.modell + " · " + state.aktiveBaugruppe.baugruppen_typ;
+  document.getElementById("inpExternDienstleister").value = "";
+  openModal("modalExternName");
+}
+function confirmExternAuftragAnlegen(){
+  var name = document.getElementById("inpExternName").value.trim();
+  var art = document.getElementById("inpExternArt").value;
+  var dienstleister = document.getElementById("inpExternDienstleister").value.trim();
+  sbPost("bg_externauftraege", {bezeichnung: name, art: art, dienstleister: dienstleister, status: "offen"}, true).then(function(res){
+    var auftragId = res[0].id;
+    var ids = state.pendingExternTeile.map(function(t){ return t.id; });
+    var updates = ids.map(function(id){
+      return sbPatch("bg_instanz_teile", "id=eq." + id, {externauftrag_id: auftragId});
+    });
+    Promise.all(updates).then(function(){
+      closeModal("modalExternName");
+      toast("Extern-Auftrag angelegt", "ok");
+      loadInstanzTeile(state.aktiveBaugruppe.id);
+      updateHeaderStats();
+    });
+  });
+}
+function loadExternAuftraege(){
+  sbGet("bg_externauftraege?select=*&order=created_at.desc").then(function(rows){
+    state.externauftraege = rows || [];
+    renderExternListe();
+  });
+}
+function renderExternListe(){
+  var wrap = document.getElementById("externListe");
+  if(!state.externauftraege || !state.externauftraege.length){
+    wrap.innerHTML = '<div class="emptyState"><div class="icon">🎨</div><p>Noch keine Extern-Aufträge.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  state.externauftraege.forEach(function(ex){
+    var el = document.createElement("div");
+    el.className = "card tap";
+    el.onclick = function(){ openExternDetail(ex); };
+    el.innerHTML =
+      '<div class="fzCard">' +
+        '<div class="fzMain">' +
+          '<div class="fzTitle">' + escapeHtml(ex.bezeichnung || "Extern-Auftrag") + '</div>' +
+          '<div class="fzMeta">' + escapeHtml(ex.art || '') + (ex.dienstleister ? ' · ' + escapeHtml(ex.dienstleister) : '') + '</div>' +
+        '</div>' +
+        '<span class="badge ' + (ex.status === 'fertig' ? 'abgeschlossen' : 'aktiv') + '">' + ex.status + '</span>' +
+      '</div>';
+    wrap.appendChild(el);
+  });
+}
+function openExternDetail(ex){
+  state.aktiverExternAuftrag = ex;
+  document.getElementById("externDetailTitle").textContent = ex.bezeichnung || "Extern-Auftrag";
+  document.getElementById("externInfoCard").innerHTML =
+    '<div class="fzMeta">' + escapeHtml(ex.art || '') + (ex.dienstleister ? ' · ' + escapeHtml(ex.dienstleister) : '') + '</div>' +
+    '<div style="margin-top:6px;"><span class="badge aktiv">' + ex.status + '</span></div>';
+  showView("view-externDetail");
+  loadExternPositionen(ex.id);
+}
+function loadExternPositionen(auftragId){
+  sbGet("bg_instanz_teile?select=*,bg_instanzen(baugruppen_typ,fahrzeug_id)&externauftrag_id=eq." + auftragId).then(function(rows){
+    renderExternPositionen(rows || []);
+  });
+}
+function renderExternPositionen(rows){
+  var wrap = document.getElementById("externPositionen");
+  if(!rows.length){
+    wrap.innerHTML = '<div class="emptyState"><p>Keine Positionen.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  rows.forEach(function(t){
+    var el = document.createElement("div");
+    el.className = "card";
+    el.style.padding = "12px 14px";
+    el.style.marginBottom = "8px";
+    var bgInfo = t.bg_instanzen ? t.bg_instanzen.baugruppen_typ : "";
+    el.innerHTML =
+      '<div class="orderTeil" style="border:none; padding:0;">' +
+        '<div>' +
+          '<div class="teilName">' + escapeHtml(t.bezeichnung) + (t.menge && t.menge > 1 ? ' <span style="color:var(--accent); font-weight:700; font-size:12px;">× ' + t.menge + '</span>' : '') + '</div>' +
+          '<div class="teilHint">' + escapeHtml(bgInfo) + '</div>' +
+        '</div>' +
+        '<div class="otWe ' + (t.rueckgabe ? 'on' : '') + '" data-id="' + t.id + '">✓</div>' +
+      '</div>';
+    el.querySelector(".otWe").onclick = function(){
+      toggleRueckgabe(t.id, !t.rueckgabe);
+    };
+    wrap.appendChild(el);
+  });
+}
+function toggleRueckgabe(teilId, neu){
+  sbPatch("bg_instanz_teile", "id=eq." + teilId, {rueckgabe: neu}).then(function(){
+    loadExternPositionen(state.aktiverExternAuftrag.id);
+  });
+}
+function externAuftragAbschliessen(){
+  sbPatch("bg_externauftraege", "id=eq." + state.aktiverExternAuftrag.id, {status: "fertig"}).then(function(){
+    toast("Extern-Auftrag abgeschlossen", "ok");
+    state.aktiverExternAuftrag.status = "fertig";
+    document.getElementById("externInfoCard").innerHTML =
+      '<div class="fzMeta">' + escapeHtml(state.aktiverExternAuftrag.art || '') + (state.aktiverExternAuftrag.dienstleister ? ' · ' + escapeHtml(state.aktiverExternAuftrag.dienstleister) : '') + '</div>' +
+      '<div style="margin-top:6px;"><span class="badge abgeschlossen">fertig</span></div>';
+  });
+}
+
+// ============ VORLAGEN-VIEW (Katalog-Übersicht) ============
+function renderVorlagenView(){
+  var wrap = document.getElementById("vorlagenListe");
+  if(!state.vorlagen.length){
+    wrap.innerHTML = '<div class="emptyState"><div class="icon">📚</div><p>Noch keine Katalog-Vorlagen.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  state.vorlagen.forEach(function(v){
+    var el = document.createElement("div");
+    el.className = "card tap";
+    el.onclick = function(){ openVorlageDetail(v); };
+    el.innerHTML =
+      '<div class="vorlageCard">' +
+        '<div class="vorlageThumb">' + (v.referenzbild_url ? '<img src="' + v.referenzbild_url + '">' : '🖼️') + '</div>' +
+        '<div class="fzMain">' +
+          '<div class="fzTitle" style="font-size:14px;">' + escapeHtml(v.name) + '</div>' +
+          '<div class="fzMeta">' + escapeHtml(v.modell) + ' · ' + escapeHtml(v.baugruppen_typ) + '</div>' +
+        '</div>' +
+        '<div class="arrow">›</div>' +
+      '</div>';
+    wrap.appendChild(el);
+  });
+}
+
+function openNeueVorlage(){
+  document.getElementById("inpVModell").value = "";
+  document.getElementById("inpVName").value = "";
+  openModal("modalNeueVorlage");
+}
+function saveNeueVorlage(){
+  var modell = document.getElementById("inpVModell").value.trim();
+  var typ = document.getElementById("inpVTyp").value;
+  var name = document.getElementById("inpVName").value.trim();
+  if(!modell || !name){ toast("Modell und Name ausfüllen", "err"); return; }
+  sbPost("bg_vorlagen", {modell: modell, baugruppen_typ: typ, name: name}, true).then(function(res){
+    closeModal("modalNeueVorlage");
+    toast("Vorlage angelegt", "ok");
+    sbGet("bg_vorlagen?select=*&aktiv=eq.true&order=modell.asc").then(function(rows){
+      state.vorlagen = rows || [];
+      renderVorlagenView();
+      if(res && res[0]) openVorlageDetail(res[0]);
+    });
+  });
+}
+
+// ============ VORLAGEN-DETAIL (EDITOR) ============
+state.aktiveVorlage = null;
+state.vorlageTeileEdit = [];
+
+function openVorlageDetail(v){
+  state.aktiveVorlage = v;
+  document.getElementById("vorlageDetailTitle").textContent = v.name;
+  renderRefPhotoBox(v);
+  showView("view-vorlageDetail");
+  sbGet("bg_vorlage_teile?select=*&vorlage_id=eq." + v.id).then(function(rows){
+    state.vorlageTeileEdit = sortByTeilenummer(rows || []);
+    renderVorlageTeileEditor();
+  });
+  resetRefCatStates("vorlage");
+  loadReferenzen("vorlage", v.id).then(function(){ renderAlleRefListen("vorlage", v.id); });
+}
+
+function renderRefPhotoBox(v){
+  var box = document.getElementById("refPhotoBox");
+  if(v.referenzbild_url){
+    box.className = "refPhotoBox hasImg";
+    box.innerHTML = '<img src="' + v.referenzbild_url + '"><input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">';
+  } else {
+    box.className = "refPhotoBox";
+    box.innerHTML = '<div class="icon">🖼️</div><div class="hint">Explosionszeichnung / Referenzbild hinzufügen</div><input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">';
+  }
+}
+function handleRefPhotoBoxClick(){
+  if(state.aktiveVorlage.referenzbild_url){
+    openZoom(state.aktiveVorlage.referenzbild_url);
+  } else {
+    document.getElementById("refPhotoInput").click();
+  }
+}
+function onRefPhotoSelected(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var box = document.getElementById("refPhotoBox");
+  box.innerHTML = '<div class="icon">⏳</div><div class="hint">Bild wird verarbeitet...</div>';
+  komprimiereBild(file, function(dataUrl){
+    sbPatch("bg_vorlagen", "id=eq." + state.aktiveVorlage.id, {referenzbild_url: dataUrl}).then(function(res){
+      if(!res){ toast("Speichern fehlgeschlagen — Bild evtl. zu groß", "err"); renderRefPhotoBox(state.aktiveVorlage); return; }
+      state.aktiveVorlage.referenzbild_url = dataUrl;
+      renderRefPhotoBox(state.aktiveVorlage);
+      toast("Referenzbild gespeichert", "ok");
+      var idx = state.vorlagen.findIndex(function(x){ return x.id === state.aktiveVorlage.id; });
+      if(idx > -1) state.vorlagen[idx].referenzbild_url = dataUrl;
+    });
+  });
+}
+function openZoom(url){
+  document.getElementById("zoomImg").src = url;
+  document.getElementById("zoomOverlay").classList.add("show");
+}
+function closeZoom(){
+  document.getElementById("zoomOverlay").classList.remove("show");
+}
+
+state.vorlageTeileOpen = state.vorlageTeileOpen || {};
+function renderVorlageTeileEditor(){
+  var wrap = document.getElementById("vorlageTeileEditor");
+  document.getElementById("vorlageTeilCount").textContent = state.vorlageTeileEdit.length ? (state.vorlageTeileEdit.length + " Teile") : "";
+  if(!state.vorlageTeileEdit.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:24px 10px;"><p>Noch keine Teile. Füge welche hinzu.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  state.vorlageTeileEdit.forEach(function(t, idx){
+    var isOpen = !!state.vorlageTeileOpen[idx];
+    var row = document.createElement("div");
+    row.className = "editTeilRow collapsible" + (isOpen ? " open" : "");
+    var nameLabel = t.bezeichnung ? escapeHtml(t.bezeichnung) : '<span class="tsEmpty">Ohne Bezeichnung</span>';
+    row.innerHTML =
+      '<div class="teilSummary" data-toggle-idx="' + idx + '">' +
+        '<div class="tsPos">' + escapeHtml(t.teilenummer || "–") + '</div>' +
+        '<div class="tsName">' + nameLabel + '</div>' +
+        (t.verschleissteil ? '<div class="tsWarnDot" title="Verschleißteil"></div>' : '') +
+        '<div class="tsMenge">×' + (t.menge || 1) + '</div>' +
+        '<div class="tsChevron">›</div>' +
+      '</div>' +
+      '<div class="editTeilBody">' +
+        '<div class="editTeilGrid">' +
+          '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-idx="' + idx + '">' +
+          '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-idx="' + idx + '">' +
+          '<input type="number" min="1" placeholder="Menge" value="' + (t.menge || 1) + '" data-field="menge" data-idx="' + idx + '">' +
+        '</div>' +
+        '<div class="editTeilGrid2">' +
+          '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-idx="' + idx + '">' +
+          '<input type="text" placeholder="Hinweis" value="' + escapeAttr(t.hinweis) + '" data-field="hinweis" data-idx="' + idx + '">' +
+        '</div>' +
+        '<div class="editTeilFoot">' +
+          '<label class="inlineChk"><input type="checkbox" data-field="verschleissteil" data-idx="' + idx + '" ' + (t.verschleissteil ? 'checked' : '') + '> Verschleißteil</label>' +
+          '<div class="removeTeilBtn" data-idx="' + idx + '">✕</div>' +
+        '</div>' +
+      '</div>';
+    wrap.appendChild(row);
+  });
+
+  // Auf-/Zuklappen
+  wrap.querySelectorAll(".teilSummary").forEach(function(sum){
+    sum.onclick = function(){
+      var idx = sum.getAttribute("data-toggle-idx");
+      state.vorlageTeileOpen[idx] = !state.vorlageTeileOpen[idx];
+      sum.closest(".editTeilRow").classList.toggle("open", state.vorlageTeileOpen[idx]);
+    };
+  });
+
+  // Change-Handler
+  wrap.querySelectorAll("input[data-field]").forEach(function(inp){
+    var evt = inp.type === "checkbox" ? "change" : "blur";
+    inp.addEventListener(evt, function(){
+      var idx = parseInt(inp.getAttribute("data-idx"));
+      var field = inp.getAttribute("data-field");
+      var val = inp.type === "checkbox" ? inp.checked : (inp.type === "number" ? (parseInt(inp.value, 10) || 1) : inp.value);
+      state.vorlageTeileEdit[idx][field] = val;
+      saveVorlageTeil(state.vorlageTeileEdit[idx]);
+      // Zusammenfassung live aktualisieren, ohne die ganze Liste neu zu rendern (Fokus bleibt erhalten)
+      var row = inp.closest(".editTeilRow");
+      if(field === "bezeichnung"){
+        var nameEl = row.querySelector(".tsName");
+        nameEl.innerHTML = val ? escapeHtml(val) : '<span class="tsEmpty">Ohne Bezeichnung</span>';
+      } else if(field === "teilenummer"){
+        row.querySelector(".tsPos").textContent = val || "–";
+      } else if(field === "menge"){
+        row.querySelector(".tsMenge").textContent = "×" + (val || 1);
+      } else if(field === "verschleissteil"){
+        var warnDot = row.querySelector(".tsWarnDot");
+        if(val && !warnDot){
+          var d = document.createElement("div");
+          d.className = "tsWarnDot";
+          d.title = "Verschleißteil";
+          row.querySelector(".tsMenge").insertAdjacentElement("beforebegin", d);
+        } else if(!val && warnDot){
+          warnDot.remove();
+        }
+      }
+    });
+  });
+  wrap.querySelectorAll(".removeTeilBtn").forEach(function(btn){
+    btn.onclick = function(){
+      var idx = parseInt(btn.getAttribute("data-idx"));
+      deleteVorlageTeil(state.vorlageTeileEdit[idx].id, idx);
+    };
+  });
+}
+
+function saveVorlageTeil(t){
+  if(t.id && !t._isNew){
+    sbPatch("bg_vorlage_teile", "id=eq." + t.id, {
+      teilenummer: t.teilenummer, bezeichnung: t.bezeichnung, bestellnummer: t.bestellnummer,
+      hinweis: t.hinweis, verschleissteil: t.verschleissteil, menge: t.menge || 1
+    });
+  } else {
+    sbPost("bg_vorlage_teile", {
+      vorlage_id: state.aktiveVorlage.id, position: state.vorlageTeileEdit.length,
+      teilenummer: t.teilenummer, bezeichnung: t.bezeichnung, bestellnummer: t.bestellnummer,
+      hinweis: t.hinweis, verschleissteil: t.verschleissteil, menge: t.menge || 1
+    }, true).then(function(res){
+      if(res && res[0]){ t.id = res[0].id; t._isNew = false; }
+    });
+  }
+}
+function addLeeresTeil(){
+  var neu = {id:null, _isNew:true, teilenummer:"", bezeichnung:"", bestellnummer:"", hinweis:"", verschleissteil:true, position: state.vorlageTeileEdit.length};
+  state.vorlageTeileEdit.push(neu);
+  renderVorlageTeileEditor();
+  // Direkt in Bezeichnungsfeld springen
+  setTimeout(function(){
+    var inputs = document.querySelectorAll('input[data-field="bezeichnung"]');
+    if(inputs.length) inputs[inputs.length - 1].focus();
+  }, 50);
+}
+function deleteVorlageTeil(id, idx){
+  if(id){
+    sbDelete("bg_vorlage_teile", "id=eq." + id).then(function(){
+      state.vorlageTeileEdit.splice(idx, 1);
+      renderVorlageTeileEditor();
+      toast("Teil gelöscht", "ok");
+    });
+  } else {
+    state.vorlageTeileEdit.splice(idx, 1);
+    renderVorlageTeileEditor();
+  }
+}
+
+// ============ TEILELISTE PDF-IMPORT (MB-Katalog) ============
+state.pdfImportVorschlag = [];
+
+function pdfExtractText(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var typedArray = new Uint8Array(ev.target.result);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      pdfjsLib.getDocument(typedArray).promise.then(function(pdf){
+        var pages = [];
+        function readPage(n){
+          if(n > pdf.numPages){ resolve(pages.join("\n")); return; }
+          pdf.getPage(n).then(function(page){
+            page.getTextContent().then(function(tc){
+              var pageText = tc.items.map(function(it){ return it.str; }).join("\n");
+              pages.push(pageText);
+              readPage(n+1);
+            });
+          });
+        }
+        readPage(1);
+      }).catch(reject);
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function onPdfTeileSelected(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var statusBox = document.getElementById("pdfImportStatus");
+  statusBox.style.display = "block";
+  statusBox.className = "pdfImportStatus";
+  statusBox.textContent = "⏳ Lese PDF-Text...";
+
+  pdfExtractText(file).then(function(text){
+    if(!text || !text.trim()){
+      throw {step:"extract", message:"PDF-Text-Extraktion lieferte leeren Text (evtl. gescanntes/Bild-PDF statt Text-PDF)."};
+    }
+    statusBox.textContent = "⏳ Analysiere Teileliste (KI)... (" + text.length + " Zeichen extrahiert)";
+    return analysierePdfTeileliste(text);
+  }).then(function(result){
+    e.target.value = "";
+    if(!result.teile.length){
+      statusBox.className = "pdfImportStatus err";
+      statusBox.innerHTML = "⚠️ Keine Teile erkannt." + buildDebugHtml(result.debug);
+      return;
+    }
+    state.pdfImportVorschlag = result.teile;
+    renderPdfImportReview();
+  }).catch(function(err){
+    console.error(err);
+    e.target.value = "";
+    statusBox.className = "pdfImportStatus err";
+    var msg = (err && err.message) ? err.message : "PDF konnte nicht verarbeitet werden.";
+    statusBox.innerHTML = "⚠️ " + escapeHtml(msg) + buildDebugHtml(err && err.debug);
+  });
+}
+
+function buildDebugHtml(debug){
+  if(!debug) return "";
+  var id = "pdfDebug_" + Date.now();
+  return '<div style="margin-top:8px;">' +
+    '<span style="text-decoration:underline; cursor:pointer; font-size:12px;" onclick="var d=document.getElementById(\'' + id + '\'); d.style.display = d.style.display===\'none\'?\'block\':\'none\';">Details anzeigen</span>' +
+    '<pre id="' + id + '" style="display:none; white-space:pre-wrap; font-size:11px; margin-top:6px; padding:8px; background:rgba(0,0,0,.05); border-radius:8px; max-height:300px; overflow-y:auto;">' + escapeHtml(debug) + '</pre>' +
+    '</div>';
+}
+
+function analysierePdfTeileliste(rawText){
+  // Text kürzen falls sehr lang (Claude-Kontext schonen), Seiten-Header etc. bleiben drin, KI filtert selbst
+  var text = rawText.length > 60000 ? rawText.slice(0, 60000) : rawText;
+
+  var prompt = "Das ist der reine Text einer Mercedes-Benz Original-Teileliste (Parts Information), extrahiert aus einem PDF. " +
+    "Format je Position: 'Pos Teilenummer Benennung/Zusatzinformation Menge'. Pro Position können mehrere Zeilen stehen " +
+    "(alte/ersetzte Teilenummern mit 'Ersetzt durch:' und Menge '-', gefolgt von der aktuell gültigen Zeile mit 'Ersetzt:' und einer echten Zahl bei Menge). " +
+    "Manche Positionen haben keine Pos-Nummer (Kleinteile/Zubehör zur vorherigen Position).\n\n" +
+    "Extrahiere daraus eine flache Liste aller AKTUELL GÜLTIGEN Teile (nur Zeilen mit einer Menge als Zahl, NICHT '-'). " +
+    "Ignoriere komplett veraltete/ersetzte Zeilen (die mit '-' bei Menge). Bei Positionen ohne Pos-Nummer lasse 'pos' leer (\"\").\n\n" +
+    "Gib AUSSCHLIESSLICH ein JSON-Array zurück, keine Erklärung, kein Markdown, kein Codeblock. " +
+    "Jedes Element: {\"pos\": string, \"teilenummer\": string, \"bezeichnung\": string, \"menge\": number}. " +
+    "'bezeichnung' = Benennung plus Zusatzinformation (z.B. 'DICHTRING WASSERABLASS'), knapp und sauber, ohne die Wörter 'Ersetzt'/'Ersetzt durch'. " +
+    "Teilenummer im Originalformat übernehmen (z.B. 'A 636 997 02 44' oder 'N 007603 030100').\n\n" +
+    "TEXT:\n" + text;
+
+  return fetch(CLAUDE_PROXY_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 8000,
+      messages: [{role:"user", content: prompt}]
+    })
+  }).then(function(r){
+    return r.text().then(function(bodyText){
+      if(!r.ok){
+        throw {step:"proxy_http", message:"Proxy-Fehler (HTTP " + r.status + ")", debug: "HTTP " + r.status + "\n\n" + bodyText};
+      }
+      var data;
+      try{ data = JSON.parse(bodyText); } catch(e){
+        throw {step:"proxy_json", message:"Proxy-Antwort war kein gültiges JSON.", debug: bodyText};
+      }
+      return data;
+    });
+  }).then(function(data){
+      if(data.error){
+        throw {step:"api_error", message:"Claude-API-Fehler: " + (data.error.message || JSON.stringify(data.error)), debug: JSON.stringify(data, null, 2)};
+      }
+      var textBlocks = (data.content || []).filter(function(b){ return b.type === "text"; }).map(function(b){ return b.text; });
+      var joined = textBlocks.join("\n").trim();
+      if(!joined){
+        throw {step:"empty_response", message:"Leere Antwort vom Modell erhalten.", debug: JSON.stringify(data, null, 2)};
+      }
+      joined = joined.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      var parsed;
+      try{ parsed = JSON.parse(joined); } catch(e){
+        throw {step:"parse", message:"Antwort konnte nicht als JSON gelesen werden.", debug: joined};
+      }
+      if(!Array.isArray(parsed)){
+        throw {step:"not_array", message:"Antwort war kein Array.", debug: joined};
+      }
+      var teile = parsed.map(function(t){
+        return {
+          pos: (t.pos || "").toString().trim(),
+          teilenummer: (t.teilenummer || "").toString().trim(),
+          bezeichnung: (t.bezeichnung || "").toString().trim(),
+          menge: parseInt(t.menge, 10) || 1,
+          _checked: true
+        };
+      }).filter(function(t){ return t.teilenummer || t.bezeichnung; });
+      return {teile: teile, debug: null};
+    }).catch(function(err){
+      // Falls bereits unser strukturierter Fehler ist, weiterreichen; sonst wrappen (z.B. Netzwerkfehler)
+      if(err && err.step) throw err;
+      throw {step:"network", message:"Netzwerk-/Verbindungsfehler zum Proxy.", debug: (err && err.message) ? err.message : String(err)};
+    });
+}
+
+function renderPdfImportReview(){
+  var statusBox = document.getElementById("pdfImportStatus");
+  var teile = state.pdfImportVorschlag;
+  statusBox.className = "pdfImportStatus";
+  var html = "✓ " + teile.length + " Teile erkannt. Prüfe die Auswahl und importiere:";
+  html += '<div class="pdfReviewList" id="pdfReviewList"></div>';
+  html += '<div class="pdfReviewActions">' +
+    '<button class="btn ghost" onclick="cancelPdfImport()">Abbrechen</button>' +
+    '<button class="btn primary" onclick="commitPdfImport()">Ausgewählte importieren</button>' +
+    '</div>';
+  statusBox.innerHTML = html;
+
+  var listWrap = document.getElementById("pdfReviewList");
+  teile.forEach(function(t, idx){
+    var row = document.createElement("label");
+    row.className = "pdfReviewRow";
+    row.innerHTML =
+      '<input type="checkbox" ' + (t._checked ? "checked" : "") + ' data-pridx="' + idx + '">' +
+      '<div class="prPos">' + escapeHtml(t.pos || "–") + '</div>' +
+      '<div class="prName">' + escapeHtml(t.bezeichnung || t.teilenummer) + '</div>' +
+      '<div class="prMenge">×' + t.menge + '</div>';
+    listWrap.appendChild(row);
+  });
+  listWrap.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.onchange = function(){
+      var idx = parseInt(cb.getAttribute("data-pridx"));
+      state.pdfImportVorschlag[idx]._checked = cb.checked;
+    };
+  });
+}
+
+function cancelPdfImport(){
+  state.pdfImportVorschlag = [];
+  var statusBox = document.getElementById("pdfImportStatus");
+  statusBox.style.display = "none";
+  statusBox.innerHTML = "";
+}
+
+function commitPdfImport(){
+  var auswahl = state.pdfImportVorschlag.filter(function(t){ return t._checked; });
+  if(!auswahl.length){ toast("Nichts ausgewählt", "err"); return; }
+  var statusBox = document.getElementById("pdfImportStatus");
+  statusBox.innerHTML = "⏳ Importiere " + auswahl.length + " Teile...";
+
+  var startPos = state.vorlageTeileEdit.length;
+  var done = 0;
+  function importNext(i){
+    if(i >= auswahl.length){
+      statusBox.style.display = "none";
+      statusBox.innerHTML = "";
+      state.pdfImportVorschlag = [];
+      toast(done + " Teile importiert", "ok");
+      return;
+    }
+    var t = auswahl[i];
+    sbPost("bg_vorlage_teile", {
+      vorlage_id: state.aktiveVorlage.id,
+      position: startPos + i,
+      teilenummer: t.pos || "",
+      bezeichnung: t.bezeichnung,
+      bestellnummer: t.teilenummer,
+      hinweis: "",
+      verschleissteil: false,
+      menge: t.menge || 1
+    }, true).then(function(res){
+      if(res && res[0]){
+        state.vorlageTeileEdit.push(res[0]);
+      }
+      done++;
+      statusBox.innerHTML = "⏳ Importiere " + done + "/" + auswahl.length + "...";
+      importNext(i+1);
+    }).catch(function(){ importNext(i+1); });
+  }
+  importNext(0);
+  renderVorlageTeileEditor();
+}
+function escapeAttr(s){
+  if(s === null || s === undefined) return "";
+  return String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+}
+
+// ============ NOTIZEN ============
+// ============ DRUCK / PDF ============
+function oeffnePrintFenster(titel, meta, rows, spalten){
+  // spalten: Array von {label, get: function(row){return string}}
+  var html = '<!DOCTYPE html><html lang="de"><head><meta charset="UTF-8">' +
+    '<title>' + escapeHtml(titel) + '</title>' +
+    '<style>' +
+    'body{font-family:-apple-system,Arial,sans-serif; padding:24px; color:#111;}' +
+    'h1{font-size:18px; margin-bottom:2px;}' +
+    '.meta{font-size:12px; color:#555; margin-bottom:18px;}' +
+    'table{width:100%; border-collapse:collapse; font-size:12px;}' +
+    'th{text-align:left; border-bottom:2px solid #111; padding:6px 8px; font-size:11px; text-transform:uppercase;}' +
+    'td{padding:6px 8px; border-bottom:1px solid #ddd; vertical-align:top;}' +
+    '.pos{font-family:monospace; color:#666; white-space:nowrap;}' +
+    '.hint{color:#777; font-size:11px;}' +
+    '.zustand-defekt{color:#c0392b; font-weight:700;}' +
+    '.zustand-verschlissen{color:#b8860b; font-weight:700;}' +
+    '.zustand-ok{color:#2a8a4a;}' +
+    '@media print{ body{padding:0;} }' +
+    '</style></head><body>' +
+    '<h1>' + escapeHtml(titel) + '</h1>' +
+    '<div class="meta">' + escapeHtml(meta) + ' · Riedel Classics · ' + new Date().toLocaleDateString('de-DE') + '</div>' +
+    '<table><thead><tr>' + spalten.map(function(s){ return '<th>' + escapeHtml(s.label) + '</th>'; }).join('') + '</tr></thead><tbody>';
+
+  rows.forEach(function(r){
+    html += '<tr>' + spalten.map(function(s){ return '<td' + (s.cls ? ' class="' + s.cls(r) + '"' : '') + '>' + s.get(r) + '</td>'; }).join('') + '</tr>';
+  });
+  html += '</tbody></table></body></html>';
+
+  var win = window.open('', '_blank');
+  if(!win){ toast("Popup blockiert — bitte erlauben", "err"); return; }
+  win.document.write(html);
+  win.document.close();
+  setTimeout(function(){ win.print(); }, 300);
+}
+
+function druckeTeileliste(){
+  var bg = state.aktiveBaugruppe;
+  var fz = state.aktivesFahrzeug;
+  var rows = state.instanzTeileCache[bg.id] || [];
+  if(!rows.length){ toast("Keine Teile zum Drucken", "err"); return; }
+  var sorted = sortByTeilenummer(rows);
+  var zustandLabel = {ok:"OK", verschlissen:"Verschleiß", defekt:"Defekt", offen:"—"};
+
+  oeffnePrintFenster(
+    "Teileliste — " + bg.baugruppen_typ + (bg.bezeichnung ? " · " + bg.bezeichnung : ""),
+    (fz ? fz.modell : "") + (fz && fz.fahrgestellnr ? " · " + fz.fahrgestellnr : ""),
+    sorted,
+    [
+      {label:"Pos", get:function(t){return escapeHtml(t.teilenummer||"");}, cls:function(){return "pos";}},
+      {label:"Bezeichnung", get:function(t){return escapeHtml(t.bezeichnung);}},
+      {label:"Menge", get:function(t){return t.menge||1;}},
+      {label:"Bestell-Nr.", get:function(t){return escapeHtml(t.bestellnummer||"");}},
+      {label:"OE-Nr.", get:function(t){return escapeHtml(t.oe_nummer||"");}},
+      {label:"Zustand", get:function(t){return zustandLabel[t.zustand]||"—";}, cls:function(t){return "zustand-"+(t.zustand||"offen");}},
+      {label:"Hinweis", get:function(t){return escapeHtml(t.hinweis||"");}, cls:function(){return "hint";}}
+    ]
+  );
+}
+
+function druckeBestellung(){
+  var b = state.aktiveBestellung;
+  sbGet("bg_instanz_teile?select=*,bg_instanzen(baugruppen_typ)&bestellauftrag_id=eq." + b.id).then(function(rows){
+    if(!rows || !rows.length){ toast("Keine Positionen zum Drucken", "err"); return; }
+    var sorted = sortByTeilenummer(rows);
+    oeffnePrintFenster(
+      "Bestellauftrag — " + (b.bezeichnung || ""),
+      (b.lieferant ? "Lieferant: " + b.lieferant : "Kein Lieferant hinterlegt") + " · Status: " + b.status,
+      sorted,
+      [
+        {label:"Pos", get:function(t){return escapeHtml(t.teilenummer||"");}, cls:function(){return "pos";}},
+        {label:"Bezeichnung", get:function(t){return escapeHtml(t.bezeichnung) + (t.bg_instanzen ? " (" + escapeHtml(t.bg_instanzen.baugruppen_typ) + ")" : "");}},
+        {label:"Menge", get:function(t){return t.menge||1;}},
+        {label:"Bestell-Nr.", get:function(t){return escapeHtml(t.bestellnummer||"");}},
+        {label:"OE-Nr.", get:function(t){return escapeHtml(t.oe_nummer||"");}},
+        {label:"Wareneingang", get:function(t){return t.wareneingang ? "✓ erhalten" : "offen";}}
+      ]
+    );
+  });
+}
+
+function druckeExternAuftrag(){
+  var ex = state.aktiverExternAuftrag;
+  sbGet("bg_instanz_teile?select=*,bg_instanzen(baugruppen_typ)&externauftrag_id=eq." + ex.id).then(function(rows){
+    if(!rows || !rows.length){ toast("Keine Positionen zum Drucken", "err"); return; }
+    var sorted = sortByTeilenummer(rows);
+    oeffnePrintFenster(
+      "Extern-Auftrag — " + (ex.bezeichnung || ""),
+      escapeHtml(ex.art || "") + (ex.dienstleister ? " · " + escapeHtml(ex.dienstleister) : "") + " · Status: " + ex.status,
+      sorted,
+      [
+        {label:"Pos", get:function(t){return escapeHtml(t.teilenummer||"");}, cls:function(){return "pos";}},
+        {label:"Bezeichnung", get:function(t){return escapeHtml(t.bezeichnung) + (t.bg_instanzen ? " (" + escapeHtml(t.bg_instanzen.baugruppen_typ) + ")" : "");}},
+        {label:"Menge", get:function(t){return t.menge||1;}},
+        {label:"Rückgabe", get:function(t){return t.rueckgabe ? "✓ zurück" : "offen";}}
+      ]
+    );
+  });
+}
+
+function saveBgNotizen(){
+  var val = document.getElementById("bgNotizen").value;
+  sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {notizen: val}).then(function(){
+    state.aktiveBaugruppe.notizen = val;
+  });
+}
+
+// ============ HANDBUCH ============
+var HB_FARBEN = ["#0b7ba8","#c8391a","#a06a0a","#1f9457","#6b4fa0","#3a4a5c"];
+
+function loadHandbuecher(){
+  sbGet("hb_buecher?select=*&order=created_at.desc").then(function(rows){
+    state.handbuecher = rows || [];
+    renderHandbuchListe();
+  });
+}
+
+function renderHandbuchListe(){
+  var wrap = document.getElementById("handbuchListe");
+  var q = (document.getElementById("hbSearchInput").value || "").toLowerCase().trim();
+  var list = state.handbuecher.filter(function(b){
+    return !q || (b.titel||"").toLowerCase().indexOf(q) > -1 || (b.kategorie||"").toLowerCase().indexOf(q) > -1;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div class="hbEmpty"><div class="icon">📖</div><p>Noch keine Handbücher.</p><p>Lege dein erstes Handbuch an.</p></div>';
+    return;
+  }
+  var grid = document.createElement("div");
+  grid.className = "hbGrid";
+  list.forEach(function(b){
+    var idx = state.handbuecher.indexOf(b);
+    var farbe = b.farbe || HB_FARBEN[idx % HB_FARBEN.length];
+    var card = document.createElement("div");
+    card.className = "hbCard";
+    card.innerHTML =
+      '<div class="hbCover" style="background:' + farbe + ';">' +
+        '<div class="hbCoverSub">' + escapeHtml(b.kategorie || "Handbuch") + '</div>' +
+        '<div class="hbCoverTit">' + escapeHtml(b.titel) + '</div>' +
+      '</div>' +
+      '<div class="hbInfo">' +
+        '<div class="hbTit">' + escapeHtml(b.titel) + '</div>' +
+        '<div class="hbMeta">' + (b.seiten_anzahl||0) + ' Seiten' + (b.jahr ? " · " + escapeHtml(b.jahr) : "") + '</div>' +
+      '</div>';
+    card.onclick = function(){ openHandbuchDetail(b.id); };
+    grid.appendChild(card);
+  });
+  wrap.innerHTML = "";
+  wrap.appendChild(grid);
+}
+
+function openNeuesHandbuch(){
+  document.getElementById("inpHbTitel").value = "";
+  document.getElementById("inpHbKategorie").value = "Werkstatthandbuch";
+  document.getElementById("inpHbJahr").value = "";
+  openModal("modalNeuesHandbuch");
+}
+
+function saveNeuesHandbuch(){
+  var titel = document.getElementById("inpHbTitel").value.trim();
+  if(!titel){ toast("Bitte Titel eingeben", "err"); return; }
+  var body = {
+    titel: titel,
+    kategorie: document.getElementById("inpHbKategorie").value,
+    jahr: document.getElementById("inpHbJahr").value.trim(),
+    farbe: HB_FARBEN[state.handbuecher.length % HB_FARBEN.length]
+  };
+  sbPost("hb_buecher", body, true).then(function(res){
+    closeModal("modalNeuesHandbuch");
+    if(res && res[0]){
+      state.handbuecher.unshift(res[0]);
+      renderHandbuchListe();
+      openHandbuchDetail(res[0].id);
+      toast("📖 Handbuch angelegt", "ok");
+    }
+  });
+}
+
+function openHandbuchDetail(id){
+  var buch = state.handbuecher.find(function(b){ return b.id === id; });
+  if(!buch) return;
+  state.aktivesHandbuch = buch;
+  document.getElementById("hbDetailTitle").textContent = buch.titel;
+  document.getElementById("hbInfoCard").innerHTML =
+    '<div style="display:flex; justify-content:space-between; align-items:center;">' +
+      '<div><div style="font-weight:700; font-size:15px;">' + escapeHtml(buch.titel) + '</div>' +
+      '<div style="font-size:12px; color:var(--text-dim); margin-top:3px;">' + escapeHtml(buch.kategorie||"") + (buch.jahr ? " · " + escapeHtml(buch.jahr) : "") + '</div></div>' +
+      '<div style="font-family:var(--mono); font-size:11px; color:var(--text-faint); text-align:right;">' + (buch.seiten_anzahl||0) + ' Seiten<br>' + (buch.ocr_anzahl||0) + ' indexiert</div>' +
+    '</div>';
+  document.getElementById("hbPageSearchInput").value = "";
+  document.getElementById("hbUploadStatus").textContent = "";
+  showView("view-handbuchDetail");
+  loadHandbuchSeiten(id);
+}
+
+function loadHandbuchSeiten(buchId){
+  sbGet("hb_seiten?select=*&buch_id=eq." + buchId + "&order=seite_nr.asc").then(function(rows){
+    state.hbSeitenCache[buchId] = rows || [];
+    renderHandbuchSeiten();
+  });
+}
+
+function renderHandbuchSeiten(){
+  var buch = state.aktivesHandbuch;
+  if(!buch) return;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var q = (document.getElementById("hbPageSearchInput").value || "").toLowerCase().trim();
+  var list = document.getElementById("hbPageListe");
+  var none = document.getElementById("hbPageNone");
+  var gefiltert = seiten.filter(function(p){
+    return !q || (p.titel||"").toLowerCase().indexOf(q) > -1 || (p.ocr_text||"").toLowerCase().indexOf(q) > -1;
+  });
+  if(!gefiltert.length){
+    list.innerHTML = "";
+    none.style.display = "block";
+    return;
+  }
+  none.style.display = "none";
+  list.innerHTML = "";
+  gefiltert.forEach(function(pg){
+    var hit = q && (pg.ocr_text||"").toLowerCase().indexOf(q) > -1;
+    var excerpt = "";
+    if(q && pg.ocr_text){
+      var low = pg.ocr_text.toLowerCase();
+      var i = low.indexOf(q);
+      if(i > -1){
+        var s = Math.max(0, i-40), e = Math.min(pg.ocr_text.length, i+q.length+70);
+        var raw = pg.ocr_text.slice(s,e);
+        excerpt = escapeHtml(raw).replace(new RegExp("("+q.replace(/[.*+?^${}()|[\]\\]/g,"\\$&")+")","gi"), "<mark>$1</mark>");
+        if(s>0) excerpt = "…" + excerpt;
+        if(e<pg.ocr_text.length) excerpt += "…";
+      }
+    } else if(pg.ocr_text){
+      excerpt = escapeHtml(pg.ocr_text.slice(0,80)) + (pg.ocr_text.length>80 ? "…" : "");
+    }
+    var el = document.createElement("div");
+    el.className = "hbPageItem" + (hit ? " hit" : "");
+    el.innerHTML =
+      '<div class="hbPageRow">' +
+        '<span class="hbPageNum">S.' + pg.seite_nr + '</span>' +
+        '<span class="hbPageTit">' + escapeHtml(pg.titel || ("Seite "+pg.seite_nr)) + '</span>' +
+        (pg.bild_url ? '<img class="hbPageThumb" src="'+pg.bild_url+'">' : '') +
+      '</div>' +
+      (excerpt ? '<div class="hbPageExcerpt">' + excerpt + '</div>' : '');
+    el.onclick = function(){ openHbSeite(seiten.indexOf(pg)); };
+    list.appendChild(el);
+  });
+}
+
+function hbSeitenAusFotos(files){
+  var buch = state.aktivesHandbuch;
+  if(!buch || !files.length) return;
+  document.getElementById("hbUploadStatus").textContent = "⏳ 0/" + files.length + " Fotos werden hochgeladen…";
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var startNr = seiten.length;
+  var done = 0;
+  var arr = Array.from(files);
+  function next(i){
+    if(i >= arr.length){
+      document.getElementById("hbUploadStatus").textContent = "✓ " + done + " Seiten hinzugefügt";
+      document.getElementById("hbAddFotoInput").value = "";
+      updateHbSeitenzahl(buch.id);
+      return;
+    }
+    komprimiereBild(arr[i], function(dataUrl){
+      hbUploadBild(dataUrl, buch.id, function(url){
+        var titel = arr[i].name.replace(/\.[^.]+$/, "");
+        sbPost("hb_seiten", {buch_id:buch.id, seite_nr:startNr+i+1, titel:titel, bild_url:url}, true).then(function(){
+          done++;
+          document.getElementById("hbUploadStatus").textContent = "⏳ " + done + "/" + arr.length + " Fotos werden hochgeladen…";
+          next(i+1);
+        });
+      });
+    });
+  }
+  next(0);
+}
+
+function hbSeitenAusPdf(file){
+  var buch = state.aktivesHandbuch;
+  if(!buch || !file) return;
+  document.getElementById("hbUploadStatus").textContent = "⏳ PDF wird verarbeitet…";
+  pdfToImages(file, function(cur, total){
+    document.getElementById("hbUploadStatus").textContent = "⏳ PDF Seite " + cur + "/" + total + "…";
+  }).then(function(images){
+    var seiten = state.hbSeitenCache[buch.id] || [];
+    var startNr = seiten.length;
+    var baseName = file.name.replace(/\.pdf$/i, "");
+    var done = 0;
+    function next(i){
+      if(i >= images.length){
+        document.getElementById("hbUploadStatus").textContent = "✓ " + done + " PDF-Seiten importiert";
+        document.getElementById("hbAddPdfInput").value = "";
+        updateHbSeitenzahl(buch.id);
+        return;
+      }
+      hbUploadBild(images[i], buch.id, function(url){
+        sbPost("hb_seiten", {buch_id:buch.id, seite_nr:startNr+i+1, titel:baseName+" S."+(i+1), bild_url:url}, true).then(function(){
+          done++;
+          document.getElementById("hbUploadStatus").textContent = "⏳ " + done + "/" + images.length + " PDF-Seiten importiert…";
+          next(i+1);
+        });
+      });
+    }
+    next(0);
+  }).catch(function(){
+    document.getElementById("hbUploadStatus").textContent = "⚠️ PDF konnte nicht verarbeitet werden";
+  });
+}
+
+function pdfToImages(file, progressCb){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var typedArray = new Uint8Array(ev.target.result);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      pdfjsLib.getDocument(typedArray).promise.then(function(pdf){
+        var images = [];
+        function renderPage(n){
+          if(n > pdf.numPages){ resolve(images); return; }
+          pdf.getPage(n).then(function(page){
+            var viewport = page.getViewport({scale: 1.5});
+            var canvas = document.createElement("canvas");
+            canvas.width = viewport.width; canvas.height = viewport.height;
+            var ctx = canvas.getContext("2d");
+            page.render({canvasContext: ctx, viewport: viewport}).promise.then(function(){
+              images.push(canvas.toDataURL("image/jpeg", 0.8));
+              if(progressCb) progressCb(n, pdf.numPages);
+              renderPage(n+1);
+            });
+          });
+        }
+        renderPage(1);
+      }).catch(reject);
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function hbUploadBild(dataUrl, buchId, callback){
+  var mediaType = dataUrl.split(";")[0].split(":")[1];
+  var ext = mediaType === "image/png" ? "png" : "jpg";
+  var base64 = dataUrl.split(",")[1];
+  var byteChars = atob(base64);
+  var byteNumbers = new Array(byteChars.length);
+  for(var i=0;i<byteChars.length;i++){ byteNumbers[i] = byteChars.charCodeAt(i); }
+  var blob = new Blob([new Uint8Array(byteNumbers)], {type: mediaType});
+  var filename = buchId + "/" + Date.now() + "_" + Math.round(Math.random()*10000) + "." + ext;
+  fetch(SUPABASE_URL + "/storage/v1/object/handbuch-seiten/" + filename, {
+    method: "POST",
+    headers: {"apikey": SUPABASE_KEY, "Authorization": "Bearer " + SUPABASE_KEY, "Content-Type": mediaType},
+    body: blob
+  }).then(function(r){
+    var publicUrl = SUPABASE_URL + "/storage/v1/object/public/handbuch-seiten/" + filename;
+    callback(publicUrl);
+  }).catch(function(){
+    toast("⚠️ Upload fehlgeschlagen", "err");
+  });
+}
+
+function updateHbSeitenzahl(buchId){
+  sbGet("hb_seiten?select=id,ocr_text&buch_id=eq."+buchId).then(function(rows){
+    var anz = (rows||[]).length;
+    var ocrAnz = (rows||[]).filter(function(r){ return r.ocr_text; }).length;
+    sbPatch("hb_buecher", "id=eq."+buchId, {seiten_anzahl: anz, ocr_anzahl: ocrAnz}).then(function(){
+      var buch = state.handbuecher.find(function(b){ return b.id === buchId; });
+      if(buch){ buch.seiten_anzahl = anz; buch.ocr_anzahl = ocrAnz; }
+      loadHandbuchSeiten(buchId);
+    });
+  });
+}
+
+function loescheHandbuch(){
+  var buch = state.aktivesHandbuch;
+  if(!buch) return;
+  if(!confirm('"' + buch.titel + '" wirklich löschen? Alle Seiten gehen verloren.')) return;
+  sbDelete("hb_buecher", "id=eq."+buch.id).then(function(){
+    state.handbuecher = state.handbuecher.filter(function(b){ return b.id !== buch.id; });
+    delete state.hbSeitenCache[buch.id];
+    goTo("handbuch");
+    toast("🗑 Handbuch gelöscht", "ok");
+  });
+}
+
+// ── Tesseract OCR ──────────────────────────────────────────
+var tesseractReady = false;
+function initTesseract(){
+  return new Promise(function(resolve){
+    if(typeof Tesseract !== "undefined"){ tesseractReady = true; resolve(); return; }
+    var s = document.createElement("script");
+    s.src = "https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js";
+    s.onload = function(){ tesseractReady = true; resolve(); };
+    s.onerror = function(){ resolve(); };
+    document.head.appendChild(s);
+  });
+}
+function runTesseractOCR(imgUrl){
+  return initTesseract().then(function(){
+    if(typeof Tesseract === "undefined") return "";
+    return Tesseract.recognize(imgUrl, "deu+eng", {logger: function(){}}).then(function(r){
+      return (r.data.text || "").trim();
+    }).catch(function(){ return ""; });
+  });
+}
+
+function ocrAlleSeiten(){
+  var buch = state.aktivesHandbuch;
+  if(!buch) return;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pending = seiten.filter(function(p){ return !p.ocr_text && p.bild_url; });
+  if(!pending.length){ toast("✓ Alle Seiten bereits indexiert", "ok"); return; }
+  var btn = document.getElementById("hbOcrAllBtn");
+  btn.classList.add("run");
+  var i = 0;
+  function next(){
+    if(i >= pending.length){
+      btn.classList.remove("run");
+      document.getElementById("hbOcrAllLbl").textContent = "✓ " + pending.length + " Seiten indexiert";
+      updateHbSeitenzahl(buch.id);
+      toast("⚡ " + pending.length + " Seiten indexiert", "ok");
+      return;
+    }
+    document.getElementById("hbOcrAllLbl").textContent = "OCR " + (i+1) + "/" + pending.length + "…";
+    runTesseractOCR(pending[i].bild_url).then(function(text){
+      sbPatch("hb_seiten", "id=eq."+pending[i].id, {ocr_text: text, ocr_quelle: "tesseract"}).then(function(){
+        pending[i].ocr_text = text;
+        i++;
+        next();
+      });
+    });
+  }
+  next();
+}
+
+// ── Seiten-Viewer ──────────────────────────────────────────
+function openHbSeite(idx, rueckweg){
+  state.aktiveHbSeiteIdx = idx;
+  state.hbRueckweg = rueckweg || null;
+  renderHbSeiteViewer();
+  showView("view-hbSeite");
+  var hint = document.getElementById("hbSeiteRueckwegHint");
+  if(rueckweg){
+    hint.style.display = "block";
+    hint.textContent = "↩ zurück zu: " + rueckweg.label;
+  } else {
+    hint.style.display = "none";
+  }
+}
+function backToHandbuchDetail(){
+  state.hbRueckweg = null;
+  showView("view-handbuchDetail");
+}
+function hbSeiteBack(){
+  var rw = state.hbRueckweg;
+  if(!rw){ backToHandbuchDetail(); return; }
+  state.hbRueckweg = null;
+  if(rw.type === "instanz"){
+    sbGet("bg_instanzen?select=*&id=eq." + rw.id).then(function(rows){
+      if(rows && rows[0]){ openBaugruppeDetail(rows[0]); }
+      else { backToHandbuchDetail(); }
+    });
+  } else {
+    sbGet("bg_vorlagen?select=*&id=eq." + rw.id).then(function(rows){
+      if(rows && rows[0]){ openVorlageDetail(rows[0]); }
+      else { backToHandbuchDetail(); }
+    });
+  }
+}
+function renderHbSeiteViewer(){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pg = seiten[state.aktiveHbSeiteIdx];
+  if(!pg) return;
+  document.getElementById("hbSeiteTitelInput").value = pg.titel || ("Seite " + pg.seite_nr);
+  document.getElementById("hbSeiteNum").textContent = "S." + pg.seite_nr + " · " + (state.aktiveHbSeiteIdx+1) + "/" + seiten.length;
+  document.getElementById("hbSeiteImg").src = pg.bild_url || "";
+  document.getElementById("hbSeiteOcrText").textContent = pg.ocr_text || "—";
+  document.getElementById("hbSeiteOcrQuelle").textContent = pg.ocr_quelle ? ("· " + pg.ocr_quelle) : "";
+  document.getElementById("hbNavPrev").disabled = state.aktiveHbSeiteIdx === 0;
+  document.getElementById("hbNavNext").disabled = state.aktiveHbSeiteIdx >= seiten.length-1;
+}
+function hbNavSeite(d){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  state.aktiveHbSeiteIdx = Math.max(0, Math.min(seiten.length-1, state.aktiveHbSeiteIdx+d));
+  renderHbSeiteViewer();
+}
+function saveHbSeiteTitel(){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pg = seiten[state.aktiveHbSeiteIdx];
+  if(!pg) return;
+  var val = document.getElementById("hbSeiteTitelInput").value;
+  sbPatch("hb_seiten", "id=eq."+pg.id, {titel: val}).then(function(){
+    pg.titel = val;
+    renderHandbuchSeiten();
+  });
+}
+
+function claudeAnalyseSeite(){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pg = seiten[state.aktiveHbSeiteIdx];
+  if(!pg || !pg.bild_url) return;
+  document.getElementById("hbSeiteOcrText").textContent = "⏳ Claude Vision analysiert die Seite…";
+  fetch(pg.bild_url).then(function(r){ return r.blob(); }).then(function(blob){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var dataUrl = ev.target.result;
+      var base64 = dataUrl.split(",")[1];
+      var mediaType = dataUrl.split(";")[0].split(":")[1];
+      var prompt = "Extrahiere den gesamten lesbaren Text dieser Werkstatthandbuch-/Tabellenbuch-Seite vollständig und wortgetreu. " +
+        "Falls es sich um eine Tabelle handelt (z.B. Anzugsmomente, Einstellwerte, Toleranzen), gib sie strukturiert zeilenweise wieder " +
+        "(Bezeichnung: Wert mit Einheit). Keine Interpretation, keine Zusammenfassung — nur den reinen Inhalt der Seite, auf Deutsch falls die Seite deutsch ist.";
+      fetch(CLAUDE_PROXY_URL, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({
+          model: "claude-sonnet-4-6",
+          max_tokens: 1500,
+          messages: [{
+            role: "user",
+            content: [
+              {type:"image", source:{type:"base64", media_type: mediaType, data: base64}},
+              {type:"text", text: prompt}
+            ]
+          }]
+        })
+      }).then(function(r){ return r.json(); })
+        .then(function(data){
+          var textBlocks = (data.content || []).filter(function(b){ return b.type === "text"; }).map(function(b){ return b.text; });
+          var result = textBlocks.join("\n") || "Keine Erkennung möglich.";
+          sbPatch("hb_seiten", "id=eq."+pg.id, {ocr_text: result, ocr_quelle: "claude"}).then(function(){
+            pg.ocr_text = result;
+            pg.ocr_quelle = "claude";
+            document.getElementById("hbSeiteOcrText").textContent = result;
+            document.getElementById("hbSeiteOcrQuelle").textContent = "· claude";
+            updateHbSeitenzahl(buch.id);
+            toast("✨ Mit Claude Vision analysiert", "ok");
+          });
+        }).catch(function(){
+          document.getElementById("hbSeiteOcrText").textContent = pg.ocr_text || "—";
+          toast("⚠️ Analyse fehlgeschlagen", "err");
+        });
+    };
+    reader.readAsDataURL(blob);
+  });
+}
+
+// ============ REFERENZEN (Baugruppe/Vorlage ↔ Handbuch) ============
+var REF_KATEGORIEN = {
+  anleitung: {label:"Technische Anleitung", icon:"🔧"},
+  einstellwerte: {label:"Einstellwerte", icon:"📐"},
+  anzugsmomente: {label:"Anzugsmomente", icon:"🔩"},
+  sonstiges: {label:"Sonstiges", icon:"📎"}
+};
+
+function loadReferenzen(type, id){
+  var filterField = type === "instanz" ? "instanz_id" : "vorlage_id";
+  return sbGet("bg_referenzen?select=*,hb_seiten(id,titel,seite_nr,bild_url,buch_id,hb_buecher(titel))&" + filterField + "=eq." + id).then(function(rows){
+    state.refCache[type+"_"+id] = rows || [];
+    return rows || [];
+  });
+}
+
+function renderAlleRefListen(type, id){
+  Object.keys(REF_KATEGORIEN).forEach(function(kat){
+    renderRefListe(type, id, kat, "refListe_" + type + "_" + kat);
+  });
+}
+
+function toggleRefCat(key){
+  var body = document.getElementById("refListe_" + key);
+  var arrow = document.getElementById("refCatArrow_" + key);
+  if(!body) return;
+  var open = body.classList.toggle("open");
+  if(arrow) arrow.classList.toggle("open", open);
+}
+
+function resetRefCatStates(type){
+  Object.keys(REF_KATEGORIEN).forEach(function(kat){
+    var key = type + "_" + kat;
+    var body = document.getElementById("refListe_" + key);
+    var arrow = document.getElementById("refCatArrow_" + key);
+    if(body){ body.classList.remove("open"); delete body.dataset.autoOpened; }
+    if(arrow){ arrow.classList.remove("open"); }
+  });
+}
+
+function renderRefListe(type, id, kategorie, targetElId){
+  var wrap = document.getElementById(targetElId);
+  if(!wrap) return;
+  var key = type + "_" + kategorie;
+  var alle = state.refCache[type+"_"+id] || [];
+  var refs = alle.filter(function(r){ return (r.kategorie || "sonstiges") === kategorie; });
+
+  var countEl = document.getElementById("refCatCount_" + key);
+  if(countEl) countEl.textContent = refs.length ? refs.length : "";
+
+  // Beim ersten Rendern mit Einträgen automatisch aufklappen
+  if(refs.length && !wrap.dataset.autoOpened){
+    wrap.classList.add("open");
+    var arrowAuto = document.getElementById("refCatArrow_" + key);
+    if(arrowAuto) arrowAuto.classList.add("open");
+    wrap.dataset.autoOpened = "1";
+  }
+
+  if(!refs.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:10px 8px;"><p style="font-size:11.5px;">Keine Einträge.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  refs.forEach(function(ref){
+    var seite = ref.hb_seiten;
+    var buchTitel = seite && seite.hb_buecher ? seite.hb_buecher.titel : "";
+    var el = document.createElement("div");
+    el.className = "refItem";
+    el.innerHTML =
+      '<div class="refIcon">📖</div>' +
+      '<div class="refMain">' +
+        '<div class="refTitle">' + escapeHtml(ref.notiz || (seite ? seite.titel : "Referenz")) + '</div>' +
+        '<div class="refSource">' + escapeHtml(buchTitel) + (seite ? (" · S." + seite.seite_nr) : "") + '</div>' +
+      '</div>' +
+      '<div class="refEdit">✎</div>' +
+      '<div class="refRemove">✕</div>';
+    el.querySelector(".refMain").onclick = function(){
+      if(seite && seite.buch_id){
+        var herkunftLabel = type === "instanz"
+          ? ((state.aktiveBaugruppe.baugruppen_typ||"") + (state.aktiveBaugruppe.bezeichnung ? " · "+state.aktiveBaugruppe.bezeichnung : ""))
+          : (state.aktiveVorlage.name || "Vorlage");
+        var rueckweg = {
+          type: type,
+          id: id,
+          label: herkunftLabel
+        };
+        openHandbuchDetail(seite.buch_id);
+        setTimeout(function(){
+          var seiten = state.hbSeitenCache[seite.buch_id] || [];
+          var idx = seiten.findIndex(function(p){ return p.id === seite.id; });
+          if(idx > -1) openHbSeite(idx, rueckweg);
+        }, 250);
+      }
+    };
+    el.querySelector(".refEdit").onclick = function(ev){
+      ev.stopPropagation();
+      var neu = prompt("Bezeichnung dieser Referenz:", ref.notiz || "");
+      if(neu === null) return;
+      neu = neu.trim();
+      sbPatch("bg_referenzen", "id=eq."+ref.id, {notiz: neu}).then(function(){
+        ref.notiz = neu;
+        renderAlleRefListen(type, id);
+        toast("✎ Referenz umbenannt", "ok");
+      });
+    };
+    el.querySelector(".refRemove").onclick = function(ev){
+      ev.stopPropagation();
+      sbDelete("bg_referenzen", "id=eq."+ref.id).then(function(){
+        loadReferenzen(type, id).then(function(){ renderAlleRefListen(type, id); });
+        toast("Referenz entfernt", "ok");
+      });
+    };
+    wrap.appendChild(el);
+  });
+}
+
+function openRefPicker(type, kategorie){
+  var id = type === "instanz" ? state.aktiveBaugruppe.id : state.aktiveVorlage.id;
+  state.refPickTarget = {type: type, id: id, kategorie: kategorie || "sonstiges"};
+  document.getElementById("refPickBookSearch").value = "";
+  renderRefPickBooks();
+  openModal("modalRefPickBook");
+}
+
+function renderRefPickBooks(){
+  var wrap = document.getElementById("refPickBookListe");
+  var q = (document.getElementById("refPickBookSearch").value || "").toLowerCase().trim();
+  var list = state.handbuecher.filter(function(b){
+    return !q || (b.titel||"").toLowerCase().indexOf(q) > -1;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:20px 10px;"><p style="font-size:12.5px;">Keine Handbücher gefunden. Lege zuerst eins im Handbuch-Tab an.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  list.forEach(function(b, idx){
+    var farbe = b.farbe || HB_FARBEN[idx % HB_FARBEN.length];
+    var el = document.createElement("div");
+    el.className = "hbPickBook";
+    el.innerHTML =
+      '<div class="hbPickThumb" style="background:'+farbe+';">📖</div>' +
+      '<div class="hbPickTit">' + escapeHtml(b.titel) + '</div>' +
+      '<div style="color:var(--text-faint); font-size:16px;">›</div>';
+    el.onclick = function(){ openRefPickPage(b.id); };
+    wrap.appendChild(el);
+  });
+}
+
+function openRefPickPage(buchId){
+  state.refPickBuchId = buchId;
+  document.getElementById("refPickPageSearch").value = "";
+  document.getElementById("inpRefNotiz").value = "";
+  closeModal("modalRefPickBook");
+  var kat = REF_KATEGORIEN[state.refPickTarget.kategorie];
+  var titleEl = document.querySelector('#modalRefPickPage .modalTitle');
+  if(titleEl && kat) titleEl.textContent = "Seite verknüpfen · " + kat.icon + " " + kat.label;
+  if(state.hbSeitenCache[buchId]){
+    renderRefPickPages();
+    openModal("modalRefPickPage");
+  } else {
+    sbGet("hb_seiten?select=*&buch_id=eq."+buchId+"&order=seite_nr.asc").then(function(rows){
+      state.hbSeitenCache[buchId] = rows || [];
+      renderRefPickPages();
+      openModal("modalRefPickPage");
+    });
+  }
+}
+
+function backToRefPickBook(){
+  closeModal("modalRefPickPage");
+  openModal("modalRefPickBook");
+}
+
+var refPickSelectedSeiteId = null;
+function renderRefPickPages(){
+  var wrap = document.getElementById("refPickPageListe");
+  var seiten = state.hbSeitenCache[state.refPickBuchId] || [];
+  var q = (document.getElementById("refPickPageSearch").value || "").toLowerCase().trim();
+  var list = seiten.filter(function(p){
+    return !q || (p.titel||"").toLowerCase().indexOf(q) > -1 || (p.ocr_text||"").toLowerCase().indexOf(q) > -1;
+  });
+  if(!list.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Keine Seiten gefunden.</p></div>';
+    return;
+  }
+  wrap.innerHTML = "";
+  list.forEach(function(pg){
+    var el = document.createElement("div");
+    el.className = "hbPageItem" + (pg.id === refPickSelectedSeiteId ? " hit" : "");
+    el.innerHTML =
+      '<div class="hbPageRow">' +
+        '<span class="hbPageNum">S.' + pg.seite_nr + '</span>' +
+        '<span class="hbPageTit">' + escapeHtml(pg.titel || ("Seite "+pg.seite_nr)) + '</span>' +
+        (pg.bild_url ? '<img class="hbPageThumb" src="'+pg.bild_url+'">' : '') +
+      '</div>';
+    el.onclick = function(){
+      refPickSelectedSeiteId = pg.id;
+      renderRefPickPages();
+      if(!document.getElementById("inpRefNotiz").value.trim()){
+        document.getElementById("inpRefNotiz").value = pg.titel || "";
+      }
+    };
+    wrap.appendChild(el);
+  });
+}
+
+function saveRefVerknuepfung(){
+  if(!refPickSelectedSeiteId){ toast("Bitte eine Seite auswählen", "err"); return; }
+  var target = state.refPickTarget;
+  var notiz = document.getElementById("inpRefNotiz").value.trim();
+  var body = {seite_id: refPickSelectedSeiteId, notiz: notiz, kategorie: target.kategorie || "sonstiges"};
+  body[target.type === "instanz" ? "instanz_id" : "vorlage_id"] = target.id;
+  sbPost("bg_referenzen", body, true).then(function(){
+    closeModal("modalRefPickPage");
+    refPickSelectedSeiteId = null;
+    toast("🔗 Referenz verknüpft", "ok");
+    loadReferenzen(target.type, target.id).then(function(){ renderAlleRefListen(target.type, target.id); });
+  });
+}
+
+// ── Verknüpfen vom Handbuch aus (umgekehrter Weg) ──────────
+var hbLinkZiel = null; // {type:'instanz'|'vorlage', id, label}
+
+function openHbLinkPicker(){
+  hbLinkZiel = null;
+  openModal("modalHbLinkType");
+}
+
+function openHbLinkFahrzeug(){
+  closeModal("modalHbLinkType");
+  var wrap = document.getElementById("hbLinkFahrzeugListe");
+  if(!state.fahrzeuge.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Keine Fahrzeuge vorhanden.</p></div>';
+  } else {
+    wrap.innerHTML = "";
+    state.fahrzeuge.forEach(function(fz){
+      var el = document.createElement("div");
+      el.className = "hbPickBook";
+      el.innerHTML =
+        '<div class="hbPickThumb" style="background:var(--accent);">🚗</div>' +
+        '<div class="hbPickTit">' + escapeHtml(fz.modell) + (fz.kunde ? ' <span style="color:var(--text-faint); font-weight:400;">· '+escapeHtml(fz.kunde)+'</span>' : '') + '</div>' +
+        '<div style="color:var(--text-faint); font-size:16px;">›</div>';
+      el.onclick = function(){ openHbLinkBaugruppe(fz); };
+      wrap.appendChild(el);
+    });
+  }
+  openModal("modalHbLinkFahrzeug");
+}
+
+function openHbLinkBaugruppe(fz){
+  closeModal("modalHbLinkFahrzeug");
+  var wrap = document.getElementById("hbLinkBaugruppeListe");
+  wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Lade…</p></div>';
+  openModal("modalHbLinkBaugruppe");
+  sbGet("bg_instanzen?select=*&fahrzeug_id=eq." + fz.id + "&order=created_at.asc").then(function(rows){
+    if(!rows || !rows.length){
+      wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Keine Baugruppen an diesem Fahrzeug.</p></div>';
+      return;
+    }
+    wrap.innerHTML = "";
+    rows.forEach(function(bg){
+      var el = document.createElement("div");
+      el.className = "hbPickBook";
+      el.innerHTML =
+        '<div class="hbPickThumb" style="background:var(--accent-dim);">🔧</div>' +
+        '<div class="hbPickTit">' + escapeHtml(bg.baugruppen_typ) + (bg.bezeichnung ? ' <span style="color:var(--text-faint); font-weight:400;">· '+escapeHtml(bg.bezeichnung)+'</span>' : '') + '</div>' +
+        '<div style="color:var(--text-faint); font-size:16px;">›</div>';
+      el.onclick = function(){
+        hbLinkZiel = {type:"instanz", id:bg.id, label: fz.modell + " · " + bg.baugruppen_typ};
+        openHbLinkKategorie();
+      };
+      wrap.appendChild(el);
+    });
+  });
+}
+
+function openHbLinkVorlage(){
+  closeModal("modalHbLinkType");
+  var wrap = document.getElementById("hbLinkVorlageListe");
+  if(!state.vorlagen.length){
+    wrap.innerHTML = '<div class="emptyState" style="padding:16px 10px;"><p style="font-size:12.5px;">Keine Vorlagen vorhanden.</p></div>';
+  } else {
+    wrap.innerHTML = "";
+    state.vorlagen.forEach(function(v){
+      var el = document.createElement("div");
+      el.className = "hbPickBook";
+      el.innerHTML =
+        '<div class="hbPickThumb" style="background:var(--warn);">📋</div>' +
+        '<div class="hbPickTit">' + escapeHtml(v.name) + '</div>' +
+        '<div style="color:var(--text-faint); font-size:16px;">›</div>';
+      el.onclick = function(){
+        hbLinkZiel = {type:"vorlage", id:v.id, label: v.name};
+        openHbLinkKategorie();
+      };
+      wrap.appendChild(el);
+    });
+  }
+  openModal("modalHbLinkVorlage");
+}
+
+function openHbLinkKategorie(){
+  closeModal("modalHbLinkFahrzeug");
+  closeModal("modalHbLinkBaugruppe");
+  closeModal("modalHbLinkVorlage");
+  document.getElementById("hbLinkZielInfo").textContent = "Ziel: " + hbLinkZiel.label;
+  document.getElementById("inpHbLinkNotiz").value = "";
+  openModal("modalHbLinkKategorie");
+}
+
+function saveHbLinkVerknuepfung(kategorie){
+  var buch = state.aktivesHandbuch;
+  var seiten = state.hbSeitenCache[buch.id] || [];
+  var pg = seiten[state.aktiveHbSeiteIdx];
+  if(!pg || !hbLinkZiel) return;
+  var notiz = document.getElementById("inpHbLinkNotiz").value.trim();
+  var body = {seite_id: pg.id, notiz: notiz, kategorie: kategorie};
+  body[hbLinkZiel.type === "instanz" ? "instanz_id" : "vorlage_id"] = hbLinkZiel.id;
+  sbPost("bg_referenzen", body, true).then(function(){
+    closeModal("modalHbLinkKategorie");
+    toast("🔗 Mit " + hbLinkZiel.label + " verknüpft", "ok");
+    hbLinkZiel = null;
+  });
+}
+
+// ============ MODALS ============
+function openModal(id){ document.getElementById(id).classList.add("show"); }
+function closeModal(id){ document.getElementById(id).classList.remove("show"); }
+document.querySelectorAll(".modalBg").forEach(function(m){
+  m.addEventListener("click", function(e){ if(e.target === m) m.classList.remove("show"); });
+});
+
+// ============ UTIL ============
+function escapeHtml(s){
+  if(s === null || s === undefined) return "";
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];
+  });
+}
+function sortByTeilenummer(rows){
+  return rows.slice().sort(function(a, b){
+    var na = parseInt((a.teilenummer || "").replace(/\D/g, ""), 10);
+    var nb = parseInt((b.teilenummer || "").replace(/\D/g, ""), 10);
+    if(isNaN(na) && isNaN(nb)) return 0;
+    if(isNaN(na)) return 1;
+    if(isNaN(nb)) return -1;
+    return na - nb;
+  });
+}
+
+// ============ START ============
+buildPinPad();
+</script>
+</body>
+</html>
