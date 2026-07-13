@@ -209,6 +209,18 @@
   .editTeilRow.open .tsChevron{transform:rotate(90deg);}
   .editTeilRow:not(.open) .editTeilBody{display:none;}
   .addTeilBtn{width:100%; padding:12px; border-radius:11px; border:1px dashed var(--line); background:transparent; color:var(--accent); font-size:13.5px; font-weight:700; margin-top:4px;}
+  .pdfImportBtn{border-style:solid; background:var(--bg-elevated); color:var(--text);}
+  .pdfImportStatus{margin-top:10px; padding:12px; border-radius:11px; background:var(--bg-elevated); border:1px solid var(--line-soft); font-size:13px; color:var(--text-dim); line-height:1.5;}
+  .pdfImportStatus.err{color:var(--bad); border-color:rgba(224,82,61,.3);}
+  .pdfReviewList{margin-top:10px; max-height:340px; overflow-y:auto; border:1px solid var(--line-soft); border-radius:11px;}
+  .pdfReviewRow{display:flex; align-items:center; gap:8px; padding:9px 12px; border-bottom:1px solid var(--line-soft); font-size:12.5px;}
+  .pdfReviewRow:last-child{border-bottom:none;}
+  .pdfReviewRow input[type=checkbox]{width:16px; height:16px; accent-color:var(--accent); flex-shrink:0;}
+  .pdfReviewRow .prPos{font-family:var(--mono); color:var(--text-faint); width:26px; flex-shrink:0; text-align:center;}
+  .pdfReviewRow .prName{flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .pdfReviewRow .prMenge{font-family:var(--mono); color:var(--text-dim); flex-shrink:0;}
+  .pdfReviewActions{display:flex; gap:8px; margin-top:10px;}
+  .pdfReviewActions .btn{flex:1;}
 
   .editModeToggle{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent); padding:6px 12px; border-radius:20px; background:rgba(14,165,233,.1); border:1px solid rgba(14,165,233,.25);}
 
@@ -449,6 +461,9 @@
     <div class="sectionLabel">Teile <span id="vorlageTeilCount" style="color:var(--text-faint); font-weight:600;"></span></div>
     <div id="vorlageTeileEditor"></div>
     <button class="addTeilBtn" onclick="addLeeresTeil()">+ Teil hinzufügen</button>
+    <button class="addTeilBtn pdfImportBtn" onclick="document.getElementById('pdfTeileInput').click()">📄 Teileliste aus PDF importieren</button>
+    <input type="file" accept="application/pdf" id="pdfTeileInput" style="display:none" onchange="onPdfTeileSelected(event)">
+    <div id="pdfImportStatus" class="pdfImportStatus" style="display:none;"></div>
 
     <div class="refCatHeader" onclick="toggleRefCat('vorlage_anleitung')">
       <span class="refCatArrow" id="refCatArrow_vorlage_anleitung">▸</span>
@@ -2002,6 +2017,184 @@ function deleteVorlageTeil(id, idx){
     state.vorlageTeileEdit.splice(idx, 1);
     renderVorlageTeileEditor();
   }
+}
+
+// ============ TEILELISTE PDF-IMPORT (MB-Katalog) ============
+state.pdfImportVorschlag = [];
+
+function pdfExtractText(file){
+  return new Promise(function(resolve, reject){
+    var reader = new FileReader();
+    reader.onload = function(ev){
+      var typedArray = new Uint8Array(ev.target.result);
+      pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+      pdfjsLib.getDocument(typedArray).promise.then(function(pdf){
+        var pages = [];
+        function readPage(n){
+          if(n > pdf.numPages){ resolve(pages.join("\n")); return; }
+          pdf.getPage(n).then(function(page){
+            page.getTextContent().then(function(tc){
+              var pageText = tc.items.map(function(it){ return it.str; }).join("\n");
+              pages.push(pageText);
+              readPage(n+1);
+            });
+          });
+        }
+        readPage(1);
+      }).catch(reject);
+    };
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function onPdfTeileSelected(e){
+  var file = e.target.files[0];
+  if(!file) return;
+  var statusBox = document.getElementById("pdfImportStatus");
+  statusBox.style.display = "block";
+  statusBox.className = "pdfImportStatus";
+  statusBox.textContent = "⏳ Lese PDF-Text...";
+
+  pdfExtractText(file).then(function(text){
+    statusBox.textContent = "⏳ Analysiere Teileliste (KI)...";
+    return analysierePdfTeileliste(text);
+  }).then(function(teile){
+    e.target.value = "";
+    if(!teile.length){
+      statusBox.className = "pdfImportStatus err";
+      statusBox.textContent = "⚠️ Keine Teile erkannt. Prüfe, ob es sich um eine MB-Katalog-Teileliste handelt.";
+      return;
+    }
+    state.pdfImportVorschlag = teile;
+    renderPdfImportReview();
+  }).catch(function(err){
+    console.error(err);
+    e.target.value = "";
+    statusBox.className = "pdfImportStatus err";
+    statusBox.textContent = "⚠️ PDF konnte nicht verarbeitet werden.";
+  });
+}
+
+function analysierePdfTeileliste(rawText){
+  // Text kürzen falls sehr lang (Claude-Kontext schonen), Seiten-Header etc. bleiben drin, KI filtert selbst
+  var text = rawText.length > 60000 ? rawText.slice(0, 60000) : rawText;
+
+  var prompt = "Das ist der reine Text einer Mercedes-Benz Original-Teileliste (Parts Information), extrahiert aus einem PDF. " +
+    "Format je Position: 'Pos Teilenummer Benennung/Zusatzinformation Menge'. Pro Position können mehrere Zeilen stehen " +
+    "(alte/ersetzte Teilenummern mit 'Ersetzt durch:' und Menge '-', gefolgt von der aktuell gültigen Zeile mit 'Ersetzt:' und einer echten Zahl bei Menge). " +
+    "Manche Positionen haben keine Pos-Nummer (Kleinteile/Zubehör zur vorherigen Position).\n\n" +
+    "Extrahiere daraus eine flache Liste aller AKTUELL GÜLTIGEN Teile (nur Zeilen mit einer Menge als Zahl, NICHT '-'). " +
+    "Ignoriere komplett veraltete/ersetzte Zeilen (die mit '-' bei Menge). Bei Positionen ohne Pos-Nummer lasse 'pos' leer (\"\").\n\n" +
+    "Gib AUSSCHLIESSLICH ein JSON-Array zurück, keine Erklärung, kein Markdown, kein Codeblock. " +
+    "Jedes Element: {\"pos\": string, \"teilenummer\": string, \"bezeichnung\": string, \"menge\": number}. " +
+    "'bezeichnung' = Benennung plus Zusatzinformation (z.B. 'DICHTRING WASSERABLASS'), knapp und sauber, ohne die Wörter 'Ersetzt'/'Ersetzt durch'. " +
+    "Teilenummer im Originalformat übernehmen (z.B. 'A 636 997 02 44' oder 'N 007603 030100').\n\n" +
+    "TEXT:\n" + text;
+
+  return fetch(CLAUDE_PROXY_URL, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 8000,
+      messages: [{role:"user", content: prompt}]
+    })
+  }).then(function(r){ return r.json(); })
+    .then(function(data){
+      var textBlocks = (data.content || []).filter(function(b){ return b.type === "text"; }).map(function(b){ return b.text; });
+      var joined = textBlocks.join("\n").trim();
+      joined = joined.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```\s*$/i, "").trim();
+      var parsed;
+      try{ parsed = JSON.parse(joined); } catch(e){ console.error("JSON-Parse fehlgeschlagen", e, joined); return []; }
+      if(!Array.isArray(parsed)) return [];
+      return parsed.map(function(t){
+        return {
+          pos: (t.pos || "").toString().trim(),
+          teilenummer: (t.teilenummer || "").toString().trim(),
+          bezeichnung: (t.bezeichnung || "").toString().trim(),
+          menge: parseInt(t.menge, 10) || 1,
+          _checked: true
+        };
+      }).filter(function(t){ return t.teilenummer || t.bezeichnung; });
+    });
+}
+
+function renderPdfImportReview(){
+  var statusBox = document.getElementById("pdfImportStatus");
+  var teile = state.pdfImportVorschlag;
+  statusBox.className = "pdfImportStatus";
+  var html = "✓ " + teile.length + " Teile erkannt. Prüfe die Auswahl und importiere:";
+  html += '<div class="pdfReviewList" id="pdfReviewList"></div>';
+  html += '<div class="pdfReviewActions">' +
+    '<button class="btn ghost" onclick="cancelPdfImport()">Abbrechen</button>' +
+    '<button class="btn primary" onclick="commitPdfImport()">Ausgewählte importieren</button>' +
+    '</div>';
+  statusBox.innerHTML = html;
+
+  var listWrap = document.getElementById("pdfReviewList");
+  teile.forEach(function(t, idx){
+    var row = document.createElement("label");
+    row.className = "pdfReviewRow";
+    row.innerHTML =
+      '<input type="checkbox" ' + (t._checked ? "checked" : "") + ' data-pridx="' + idx + '">' +
+      '<div class="prPos">' + escapeHtml(t.pos || "–") + '</div>' +
+      '<div class="prName">' + escapeHtml(t.bezeichnung || t.teilenummer) + '</div>' +
+      '<div class="prMenge">×' + t.menge + '</div>';
+    listWrap.appendChild(row);
+  });
+  listWrap.querySelectorAll('input[type=checkbox]').forEach(function(cb){
+    cb.onchange = function(){
+      var idx = parseInt(cb.getAttribute("data-pridx"));
+      state.pdfImportVorschlag[idx]._checked = cb.checked;
+    };
+  });
+}
+
+function cancelPdfImport(){
+  state.pdfImportVorschlag = [];
+  var statusBox = document.getElementById("pdfImportStatus");
+  statusBox.style.display = "none";
+  statusBox.innerHTML = "";
+}
+
+function commitPdfImport(){
+  var auswahl = state.pdfImportVorschlag.filter(function(t){ return t._checked; });
+  if(!auswahl.length){ toast("Nichts ausgewählt", "err"); return; }
+  var statusBox = document.getElementById("pdfImportStatus");
+  statusBox.innerHTML = "⏳ Importiere " + auswahl.length + " Teile...";
+
+  var startPos = state.vorlageTeileEdit.length;
+  var done = 0;
+  function importNext(i){
+    if(i >= auswahl.length){
+      statusBox.style.display = "none";
+      statusBox.innerHTML = "";
+      state.pdfImportVorschlag = [];
+      toast(done + " Teile importiert", "ok");
+      return;
+    }
+    var t = auswahl[i];
+    sbPost("bg_vorlage_teile", {
+      vorlage_id: state.aktiveVorlage.id,
+      position: startPos + i,
+      teilenummer: t.pos || "",
+      bezeichnung: t.bezeichnung,
+      bestellnummer: t.teilenummer,
+      hinweis: "",
+      verschleissteil: false,
+      menge: t.menge || 1
+    }, true).then(function(res){
+      if(res && res[0]){
+        state.vorlageTeileEdit.push(res[0]);
+      }
+      done++;
+      statusBox.innerHTML = "⏳ Importiere " + done + "/" + auswahl.length + "...";
+      importNext(i+1);
+    }).catch(function(){ importNext(i+1); });
+  }
+  importNext(0);
+  renderVorlageTeileEditor();
 }
 function escapeAttr(s){
   if(s === null || s === undefined) return "";
