@@ -1494,8 +1494,8 @@ function renderTeileListe(rows){
     return;
   }
 
-  var gruppen = untergruppen.map(function(u){ return {key: u.id, id: u.id, name: u.name}; });
-  gruppen.push({key: "allgemein", id: null, name: "Allgemein"});
+  var gruppen = untergruppen.map(function(u){ return {key: u.id, id: u.id, name: u.name, bild_url: u.bild_url}; });
+  gruppen.push({key: "allgemein", id: null, name: "Allgemein", bild_url: null});
 
   gruppen.forEach(function(g){
     var teile = rows.filter(function(t){ return (t.untergruppe_id || null) === g.id; });
@@ -1513,6 +1513,14 @@ function renderTeileListe(rows){
     card.appendChild(groupCard);
     var body = groupCard.querySelector(".ugBody");
     if(isOpen){
+      if(g.bild_url){
+        var photoBox = document.createElement("div");
+        photoBox.className = "ugPhotoBox hasImg";
+        photoBox.style.cursor = "zoom-in";
+        photoBox.innerHTML = '<img src="' + g.bild_url + '">';
+        photoBox.onclick = function(){ openZoom(g.bild_url); };
+        body.appendChild(photoBox);
+      }
       teile.forEach(function(t){
         body.appendChild(state.teileEditMode ? buildInstanzTeilEditRow(t) : buildInstanzTeilRow(t));
       });
@@ -1607,29 +1615,38 @@ function vorlageOption(v){
   return el;
 }
 function applyVorlage(vorlageId){
+  var bestehend = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  if(bestehend.length){
+    if(!confirm(bestehend.length + " bereits vorhandene Teile werden ersetzt und gehen (inkl. Status/Zustand) verloren. Fortfahren?")) return;
+  }
   sbGet("bg_vorlage_teile?select=*&vorlage_id=eq." + vorlageId).then(function(teile){
     teile = sortByTeilenummer(teile || []);
     if(!teile || !teile.length){ toast("Vorlage ist leer", "err"); return; }
-    var neueTeile = teile.map(function(t, i){
-      return {
-        instanz_id: state.aktiveBaugruppe.id,
-        position: i,
-        bezeichnung: t.bezeichnung,
-        teilenummer: t.teilenummer,
-        bestellnummer: t.bestellnummer,
-        menge: t.menge || 1,
-        verschleissteil: t.verschleissteil,
-        hinweis: t.hinweis,
-        untergruppe_id: t.untergruppe_id || null,
-        zustand: "offen"
-      };
-    });
-    sbPost("bg_instanz_teile", neueTeile, true).then(function(){
-      sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {vorlage_id: vorlageId}).then(function(){});
-      state.aktiveBaugruppe.vorlage_id = vorlageId;
-      closeModal("modalVorlageLaden");
-      toast(teile.length + " Teile übernommen", "ok");
-      loadInstanzTeile(state.aktiveBaugruppe.id);
+    var weiter = bestehend.length
+      ? sbDelete("bg_instanz_teile", "instanz_id=eq." + state.aktiveBaugruppe.id)
+      : Promise.resolve();
+    weiter.then(function(){
+      var neueTeile = teile.map(function(t, i){
+        return {
+          instanz_id: state.aktiveBaugruppe.id,
+          position: i,
+          bezeichnung: t.bezeichnung,
+          teilenummer: t.teilenummer,
+          bestellnummer: t.bestellnummer,
+          menge: t.menge || 1,
+          verschleissteil: t.verschleissteil,
+          hinweis: t.hinweis,
+          untergruppe_id: t.untergruppe_id || null,
+          zustand: "offen"
+        };
+      });
+      sbPost("bg_instanz_teile", neueTeile, true).then(function(){
+        sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {vorlage_id: vorlageId}).then(function(){});
+        state.aktiveBaugruppe.vorlage_id = vorlageId;
+        closeModal("modalVorlageLaden");
+        toast(teile.length + " Teile übernommen", "ok");
+        loadInstanzTeile(state.aktiveBaugruppe.id);
+      });
     });
   });
 }
