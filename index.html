@@ -893,6 +893,8 @@ var state = {
   aktiveBaugruppe: null,
   aktiveBestellung: null,
   instanzTeileCache: {},
+  instanzUntergruppenCache: {},
+  instanzUgOpen: {},
   bestellungen: [],
   handbuecher: [],
   aktivesHandbuch: null,
@@ -1152,6 +1154,7 @@ function backToFahrzeug(){
 function openBaugruppeDetail(bg){
   state.aktiveBaugruppe = bg;
   state.teileEditMode = false;
+  state.instanzUgOpen = {};
   document.getElementById("bgDetailTitle").textContent = bg.baugruppen_typ + (bg.bezeichnung ? " · " + bg.bezeichnung : "");
   document.getElementById("bgNotizen").value = bg.notizen || "";
   renderStatusStrip(bg.status);
@@ -1345,9 +1348,14 @@ function analysiereFoto(dataUrl){
 
 // ============ TEILELISTE ============
 function loadInstanzTeile(instanzId){
-  sbGet("bg_instanz_teile?select=*&instanz_id=eq." + instanzId).then(function(rows){
-    var sorted = sortByTeilenummer(rows || []);
+  var vorlageId = state.aktiveBaugruppe && state.aktiveBaugruppe.vorlage_id;
+  Promise.all([
+    sbGet("bg_instanz_teile?select=*&instanz_id=eq." + instanzId),
+    vorlageId ? sbGet("bg_vorlage_untergruppen?select=*&vorlage_id=eq." + vorlageId + "&order=position.asc") : Promise.resolve([])
+  ]).then(function(res){
+    var sorted = sortByTeilenummer(res[0] || []);
     state.instanzTeileCache[instanzId] = sorted;
+    state.instanzUntergruppenCache[instanzId] = res[1] || [];
     renderTeileListe(sorted);
   });
 }
@@ -1356,6 +1364,104 @@ function toggleTeileEditMode(){
   state.teileEditMode = !state.teileEditMode;
   var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
   renderTeileListe(rows);
+}
+function buildInstanzTeilEditRow(t){
+  var row = document.createElement("div");
+  row.className = "editTeilRow";
+  row.style.margin = "10px 0";
+  row.innerHTML =
+    '<div class="editTeilGrid">' +
+      '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-id="' + t.id + '">' +
+      '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-id="' + t.id + '">' +
+      '<input type="number" min="1" placeholder="Menge" value="' + (t.menge || 1) + '" data-field="menge" data-id="' + t.id + '">' +
+    '</div>' +
+    '<div class="editTeilGrid2">' +
+      '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-id="' + t.id + '">' +
+      '<input type="text" placeholder="Hinweis" value="' + escapeAttr(t.hinweis) + '" data-field="hinweis" data-id="' + t.id + '">' +
+    '</div>' +
+    '<div class="editTeilFoot">' +
+      '<label class="inlineChk"><input type="checkbox" data-field="verschleissteil" data-id="' + t.id + '" ' + (t.verschleissteil ? 'checked' : '') + '> Verschleißteil</label>' +
+      '<div class="removeTeilBtn" data-id="' + t.id + '">✕</div>' +
+    '</div>';
+  return row;
+}
+function buildInstanzTeilRow(t){
+  var row = document.createElement("div");
+  row.className = "teilItem";
+  row.style.flexWrap = "wrap";
+  var zeigtMassnahme = (t.zustand === "verschlissen" || t.zustand === "defekt");
+  var massnahmeLabel = {bestellen:"Neu bestellen", intern:"Intern überarbeiten", extern:"Extern (Beschichten/Galvanik)"};
+  row.innerHTML =
+    '<div class="teilMain">' +
+      '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + '</div>' +
+      (t.bestellnummer ? '<div class="teilHint">Bestell-Nr: ' + escapeHtml(t.bestellnummer) + (t.hinweis ? ' · ' + escapeHtml(t.hinweis) : '') + '</div>' : (t.hinweis ? '<div class="teilHint">' + escapeHtml(t.hinweis) + '</div>' : '')) +
+    '</div>' +
+    '<input type="number" min="1" class="mengeInlineInput" data-teil-id="' + t.id + '" value="' + (t.menge || 1) + '" style="width:44px; text-align:center; padding:6px 4px; font-size:13px; border-radius:8px; background:var(--bg-elevated); border:1px solid var(--line); color:var(--text); margin-right:6px;">' +
+    '<div class="zustandPicker">' +
+      '<div class="zBtn ok ' + (t.zustand==='ok'?'active':'') + '" data-z="ok">✓</div>' +
+      '<div class="zBtn verschlissen ' + (t.zustand==='verschlissen'?'active':'') + '" data-z="verschlissen">△</div>' +
+      '<div class="zBtn defekt ' + (t.zustand==='defekt'?'active':'') + '" data-z="defekt">✕</div>' +
+    '</div>' +
+    (zeigtMassnahme ? (
+      '<div style="width:100%; display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' +
+        ['bestellen','intern','extern'].map(function(m){
+          return '<div class="statusChip massnahmeChip' + (t.massnahme===m ? ' current' : '') + '" data-m="' + m + '" style="font-size:10.5px; padding:5px 10px; cursor:pointer;">' + massnahmeLabel[m] + '</div>';
+        }).join('') +
+      '</div>'
+    ) : '');
+  row.querySelectorAll(".zBtn").forEach(function(btn){
+    btn.onclick = function(){ setTeilZustand(t.id, btn.getAttribute("data-z")); };
+  });
+  row.querySelectorAll(".massnahmeChip").forEach(function(chip){
+    chip.onclick = function(){ setTeilMassnahme(t.id, chip.getAttribute("data-m")); };
+  });
+  var mengeInp = row.querySelector(".mengeInlineInput");
+  mengeInp.addEventListener("blur", function(){
+    var neu = parseInt(mengeInp.value, 10) || 1;
+    sbPatch("bg_instanz_teile", "id=eq." + t.id, {menge: neu}).then(function(){
+      var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+      arr.forEach(function(r){ if(r.id === t.id) r.menge = neu; });
+    });
+  });
+  return row;
+}
+function attachInstanzEditHandlers(container){
+  container.querySelectorAll("input[data-field]").forEach(function(inp){
+    var evt = inp.type === "checkbox" ? "change" : "blur";
+    inp.addEventListener(evt, function(){
+      var id = inp.getAttribute("data-id");
+      var field = inp.getAttribute("data-field");
+      var val = inp.type === "checkbox" ? inp.checked : (inp.type === "number" ? (parseInt(inp.value, 10) || 1) : inp.value);
+      var body = {}; body[field] = val;
+      sbPatch("bg_instanz_teile", "id=eq." + id, body).then(function(){
+        var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+        arr.forEach(function(r){ if(r.id === id) r[field] = val; });
+      });
+    });
+  });
+  container.querySelectorAll(".removeTeilBtn").forEach(function(btn){
+    btn.onclick = function(){
+      var id = btn.getAttribute("data-id");
+      sbDelete("bg_instanz_teile", "id=eq." + id).then(function(){
+        var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
+        state.instanzTeileCache[state.aktiveBaugruppe.id] = arr.filter(function(r){ return r.id !== id; });
+        renderTeileListe(state.instanzTeileCache[state.aktiveBaugruppe.id]);
+        toast("Teil gelöscht", "ok");
+      });
+    };
+  });
+}
+function addInstanzTeil(untergruppeId){
+  var rows = state.instanzTeileCache[state.aktiveBaugruppe.id] || [];
+  sbPost("bg_instanz_teile", {
+    instanz_id: state.aktiveBaugruppe.id, position: rows.length,
+    bezeichnung: "Neues Teil", zustand: "offen", untergruppe_id: untergruppeId || null
+  }, true).then(function(res){
+    if(res && res[0]){
+      state.instanzTeileCache[state.aktiveBaugruppe.id].push(res[0]);
+      renderTeileListe(state.instanzTeileCache[state.aktiveBaugruppe.id]);
+    }
+  });
 }
 function renderTeileListe(rows){
   var card = document.getElementById("teileCard");
@@ -1368,108 +1474,66 @@ function renderTeileListe(rows){
   }
   card.innerHTML = "";
 
-  if(state.teileEditMode){
-    rows.forEach(function(t, idx){
-      var row = document.createElement("div");
-      row.className = "editTeilRow";
-      row.style.margin = "10px 0";
-      row.innerHTML =
-        '<div class="editTeilGrid">' +
-          '<input type="text" placeholder="Pos" value="' + escapeAttr(t.teilenummer) + '" data-field="teilenummer" data-id="' + t.id + '">' +
-          '<input type="text" placeholder="Bezeichnung" value="' + escapeAttr(t.bezeichnung) + '" data-field="bezeichnung" data-id="' + t.id + '">' +
-          '<input type="number" min="1" placeholder="Menge" value="' + (t.menge || 1) + '" data-field="menge" data-id="' + t.id + '">' +
-        '</div>' +
-        '<div class="editTeilGrid2">' +
-          '<input type="text" placeholder="Bestellnummer" value="' + escapeAttr(t.bestellnummer) + '" data-field="bestellnummer" data-id="' + t.id + '">' +
-          '<input type="text" placeholder="Hinweis" value="' + escapeAttr(t.hinweis) + '" data-field="hinweis" data-id="' + t.id + '">' +
-        '</div>' +
-        '<div class="editTeilFoot">' +
-          '<label class="inlineChk"><input type="checkbox" data-field="verschleissteil" data-id="' + t.id + '" ' + (t.verschleissteil ? 'checked' : '') + '> Verschleißteil</label>' +
-          '<div class="removeTeilBtn" data-id="' + t.id + '">✕</div>' +
-        '</div>';
-      card.appendChild(row);
+  var untergruppen = state.instanzUntergruppenCache[state.aktiveBaugruppe.id] || [];
+
+  if(!untergruppen.length){
+    // Kein Untergruppen-Schema für diese Vorlage bekannt -> flache Liste wie bisher
+    var flatBody = document.createElement("div");
+    rows.forEach(function(t){
+      flatBody.appendChild(state.teileEditMode ? buildInstanzTeilEditRow(t) : buildInstanzTeilRow(t));
     });
-    card.querySelectorAll("input[data-field]").forEach(function(inp){
-      var evt = inp.type === "checkbox" ? "change" : "blur";
-      inp.addEventListener(evt, function(){
-        var id = inp.getAttribute("data-id");
-        var field = inp.getAttribute("data-field");
-        var val = inp.type === "checkbox" ? inp.checked : (inp.type === "number" ? (parseInt(inp.value, 10) || 1) : inp.value);
-        var body = {}; body[field] = val;
-        sbPatch("bg_instanz_teile", "id=eq." + id, body).then(function(){
-          var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
-          arr.forEach(function(r){ if(r.id === id) r[field] = val; });
-        });
-      });
-    });
-    card.querySelectorAll(".removeTeilBtn").forEach(function(btn){
-      btn.onclick = function(){
-        var id = btn.getAttribute("data-id");
-        sbDelete("bg_instanz_teile", "id=eq." + id).then(function(){
-          var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
-          state.instanzTeileCache[state.aktiveBaugruppe.id] = arr.filter(function(r){ return r.id !== id; });
-          renderTeileListe(state.instanzTeileCache[state.aktiveBaugruppe.id]);
-          toast("Teil gelöscht", "ok");
-        });
-      };
-    });
-    var addBtn = document.createElement("button");
-    addBtn.className = "addTeilBtn";
-    addBtn.textContent = "+ Teil hinzufügen";
-    addBtn.onclick = function(){
-      sbPost("bg_instanz_teile", {
-        instanz_id: state.aktiveBaugruppe.id, position: rows.length,
-        bezeichnung: "Neues Teil", zustand: "offen"
-      }, true).then(function(res){
-        if(res && res[0]){
-          state.instanzTeileCache[state.aktiveBaugruppe.id].push(res[0]);
-          renderTeileListe(state.instanzTeileCache[state.aktiveBaugruppe.id]);
-        }
-      });
-    };
-    card.appendChild(addBtn);
+    card.appendChild(flatBody);
+    if(state.teileEditMode){
+      attachInstanzEditHandlers(flatBody);
+      var addBtn = document.createElement("button");
+      addBtn.className = "addTeilBtn";
+      addBtn.textContent = "+ Teil hinzufügen";
+      addBtn.onclick = function(){ addInstanzTeil(null); };
+      card.appendChild(addBtn);
+    }
     return;
   }
 
-  rows.forEach(function(t){
-    var row = document.createElement("div");
-    row.className = "teilItem";
-    row.style.flexWrap = "wrap";
-    var zeigtMassnahme = (t.zustand === "verschlissen" || t.zustand === "defekt");
-    var massnahmeLabel = {bestellen:"Neu bestellen", intern:"Intern überarbeiten", extern:"Extern (Beschichten/Galvanik)"};
-    row.innerHTML =
-      '<div class="teilMain">' +
-        '<div class="teilName">' + (t.teilenummer && t.teilenummer !== '-' ? '<span style="color:var(--text-faint); font-family:var(--mono); font-weight:600; font-size:11px; margin-right:6px;">' + escapeHtml(t.teilenummer) + '</span>' : '') + escapeHtml(t.bezeichnung) + '</div>' +
-        (t.bestellnummer ? '<div class="teilHint">Bestell-Nr: ' + escapeHtml(t.bestellnummer) + (t.hinweis ? ' · ' + escapeHtml(t.hinweis) : '') + '</div>' : (t.hinweis ? '<div class="teilHint">' + escapeHtml(t.hinweis) + '</div>' : '')) +
+  var gruppen = untergruppen.map(function(u){ return {key: u.id, id: u.id, name: u.name}; });
+  gruppen.push({key: "allgemein", id: null, name: "Allgemein"});
+
+  gruppen.forEach(function(g){
+    var teile = rows.filter(function(t){ return (t.untergruppe_id || null) === g.id; });
+    if(!teile.length) return;
+    var isOpen = state.instanzUgOpen[g.key] !== false;
+    var groupCard = document.createElement("div");
+    groupCard.className = "ugCard";
+    groupCard.innerHTML =
+      '<div class="ugHeader" data-iug-toggle="' + g.key + '">' +
+        '<span class="ugArrow' + (isOpen ? ' open' : '') + '">▸</span>' +
+        '<span class="ugName">' + escapeHtml(g.name) + '</span>' +
+        '<span class="ugCount">' + teile.length + '</span>' +
       '</div>' +
-      '<input type="number" min="1" class="mengeInlineInput" data-teil-id="' + t.id + '" value="' + (t.menge || 1) + '" style="width:44px; text-align:center; padding:6px 4px; font-size:13px; border-radius:8px; background:var(--bg-elevated); border:1px solid var(--line); color:var(--text); margin-right:6px;">' +
-      '<div class="zustandPicker">' +
-        '<div class="zBtn ok ' + (t.zustand==='ok'?'active':'') + '" data-z="ok">✓</div>' +
-        '<div class="zBtn verschlissen ' + (t.zustand==='verschlissen'?'active':'') + '" data-z="verschlissen">△</div>' +
-        '<div class="zBtn defekt ' + (t.zustand==='defekt'?'active':'') + '" data-z="defekt">✕</div>' +
-      '</div>' +
-      (zeigtMassnahme ? (
-        '<div style="width:100%; display:flex; gap:6px; margin-top:8px; flex-wrap:wrap;">' +
-          ['bestellen','intern','extern'].map(function(m){
-            return '<div class="statusChip massnahmeChip' + (t.massnahme===m ? ' current' : '') + '" data-m="' + m + '" style="font-size:10.5px; padding:5px 10px; cursor:pointer;">' + massnahmeLabel[m] + '</div>';
-          }).join('') +
-        '</div>'
-      ) : '');
-    row.querySelectorAll(".zBtn").forEach(function(btn){
-      btn.onclick = function(){ setTeilZustand(t.id, btn.getAttribute("data-z")); };
-    });
-    row.querySelectorAll(".massnahmeChip").forEach(function(chip){
-      chip.onclick = function(){ setTeilMassnahme(t.id, chip.getAttribute("data-m")); };
-    });
-    var mengeInp = row.querySelector(".mengeInlineInput");
-    mengeInp.addEventListener("blur", function(){
-      var neu = parseInt(mengeInp.value, 10) || 1;
-      sbPatch("bg_instanz_teile", "id=eq." + t.id, {menge: neu}).then(function(){
-        var arr = state.instanzTeileCache[state.aktiveBaugruppe.id];
-        arr.forEach(function(r){ if(r.id === t.id) r.menge = neu; });
+      '<div class="ugBody' + (isOpen ? ' open' : '') + '"></div>';
+    card.appendChild(groupCard);
+    var body = groupCard.querySelector(".ugBody");
+    if(isOpen){
+      teile.forEach(function(t){
+        body.appendChild(state.teileEditMode ? buildInstanzTeilEditRow(t) : buildInstanzTeilRow(t));
       });
-    });
-    card.appendChild(row);
+      if(state.teileEditMode){
+        attachInstanzEditHandlers(body);
+        var addBtn = document.createElement("button");
+        addBtn.className = "addTeilBtn";
+        addBtn.style.marginTop = "8px";
+        addBtn.textContent = "+ Teil hinzufügen";
+        addBtn.onclick = function(){ addInstanzTeil(g.id); };
+        body.appendChild(addBtn);
+      }
+    }
+  });
+
+  card.querySelectorAll("[data-iug-toggle]").forEach(function(h){
+    h.onclick = function(){
+      var key = h.getAttribute("data-iug-toggle");
+      state.instanzUgOpen[key] = !(state.instanzUgOpen[key] !== false);
+      renderTeileListe(rows);
+    };
   });
 }
 function setTeilZustand(teilId, zustand){
@@ -1556,11 +1620,13 @@ function applyVorlage(vorlageId){
         menge: t.menge || 1,
         verschleissteil: t.verschleissteil,
         hinweis: t.hinweis,
+        untergruppe_id: t.untergruppe_id || null,
         zustand: "offen"
       };
     });
     sbPost("bg_instanz_teile", neueTeile, true).then(function(){
       sbPatch("bg_instanzen", "id=eq." + state.aktiveBaugruppe.id, {vorlage_id: vorlageId}).then(function(){});
+      state.aktiveBaugruppe.vorlage_id = vorlageId;
       closeModal("modalVorlageLaden");
       toast(teile.length + " Teile übernommen", "ok");
       loadInstanzTeile(state.aktiveBaugruppe.id);
