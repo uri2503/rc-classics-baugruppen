@@ -179,6 +179,7 @@
   .refPhotoBox .hint{font-size:12px;}
   .refPhotoBox .icon{font-size:26px;}
   .refPhotoBox.hasImg{border-style:solid; cursor:zoom-in;}
+  .refPhotoRemove{position:absolute; top:10px; right:10px; width:32px; height:32px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; z-index:2;}
 
   .zoomOverlay{position:fixed; inset:0; background:rgba(0,0,0,.9); z-index:250; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:.2s; padding:20px;}
   .zoomOverlay.show{opacity:1; pointer-events:auto;}
@@ -1880,7 +1881,7 @@ function renderRefPhotoBox(v){
   var box = document.getElementById("refPhotoBox");
   if(v.referenzbild_url){
     box.className = "refPhotoBox hasImg";
-    box.innerHTML = '<img src="' + v.referenzbild_url + '"><input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">';
+    box.innerHTML = '<img src="' + v.referenzbild_url + '"><span class="refPhotoRemove" onclick="removeRefPhoto(event)">✕</span><input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">';
   } else {
     box.className = "refPhotoBox";
     box.innerHTML = '<div class="icon">🖼️</div><div class="hint">Explosionszeichnung / Referenzbild hinzufügen</div><input type="file" accept="image/*" id="refPhotoInput" style="display:none" onchange="onRefPhotoSelected(event)">';
@@ -1892,6 +1893,18 @@ function handleRefPhotoBoxClick(){
   } else {
     document.getElementById("refPhotoInput").click();
   }
+}
+function removeRefPhoto(e){
+  e.stopPropagation();
+  if(!confirm("Referenzbild entfernen?")) return;
+  sbPatch("bg_vorlagen", "id=eq." + state.aktiveVorlage.id, {referenzbild_url: null}).then(function(res){
+    if(!res){ toast("Entfernen fehlgeschlagen", "err"); return; }
+    state.aktiveVorlage.referenzbild_url = null;
+    renderRefPhotoBox(state.aktiveVorlage);
+    toast("Referenzbild entfernt", "ok");
+    var idx = state.vorlagen.findIndex(function(x){ return x.id === state.aktiveVorlage.id; });
+    if(idx > -1) state.vorlagen[idx].referenzbild_url = null;
+  });
 }
 function onRefPhotoSelected(e){
   var file = e.target.files[0];
