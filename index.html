@@ -233,6 +233,11 @@
   .ugDelete{color:var(--bad); font-size:15px; flex-shrink:0; padding:2px 4px;}
   .ugBody{display:none; padding:0 14px 14px;}
   .ugBody.open{display:block;}
+  .ugPhotoBox{width:100%; border-radius:12px; background:var(--bg-elevated); border:1px dashed var(--line); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--text-faint); overflow:hidden; position:relative; margin-bottom:10px; min-height:110px;}
+  .ugPhotoBox img{width:100%; display:block;}
+  .ugPhotoBox .hint{font-size:11px;}
+  .ugPhotoBox .icon{font-size:20px;}
+  .ugPhotoBox.hasImg{border-style:solid; cursor:zoom-in; min-height:0;}
 
   .editModeToggle{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent); padding:6px 12px; border-radius:20px; background:rgba(14,165,233,.1); border:1px solid rgba(14,165,233,.25);}
 
@@ -1999,7 +2004,7 @@ function renderUntergruppenListe(){
   wrap.innerHTML = "";
 
   var gruppen = state.untergruppenEdit.map(function(u){
-    return {key: u.id, id: u.id, name: u.name, deletable: true};
+    return {key: u.id, id: u.id, name: u.name, bild_url: u.bild_url, deletable: true};
   });
   gruppen.push({key: "allgemein", id: null, name: "Allgemein", deletable: false});
 
@@ -2018,6 +2023,12 @@ function renderUntergruppenListe(){
         (g.deletable ? '<span class="ugDelete" data-ug-delete="' + g.id + '">🗑️</span>' : '') +
       '</div>' +
       '<div class="ugBody' + (isOpen ? ' open' : '') + '">' +
+        (g.deletable ? (
+          '<div class="ugPhotoBox' + (g.bild_url ? ' hasImg' : '') + '" data-ug-photobox="' + g.id + '">' +
+            (g.bild_url ? '<img src="' + g.bild_url + '">' : '<div class="icon">🖼️</div><div class="hint">Explosionszeichnung hinzufügen</div>') +
+            '<input type="file" accept="image/*" style="display:none" data-ug-photoinput="' + g.id + '">' +
+          '</div>'
+        ) : '') +
         (teile.length ? '<div class="ugTeileList" data-ug-list="' + g.key + '"></div>' : '<div class="emptyState" style="padding:16px 4px;"><p>Noch keine Teile in dieser Gruppe.</p></div>') +
         '<button class="addTeilBtn" data-ug-addteil="' + idAttr + '" style="margin-top:8px;">+ Teil hinzufügen</button>' +
         '<button class="addTeilBtn pdfImportBtn" data-ug-addpdf="' + idAttr + '">📄 Teileliste aus PDF importieren</button>' +
@@ -2068,6 +2079,39 @@ function renderUntergruppenListe(){
       state.pdfImportTargetUntergruppe = (id === "null" ? null : id);
       document.getElementById("pdfTeileInput").click();
     };
+  });
+  wrap.querySelectorAll("[data-ug-photobox]").forEach(function(box){
+    var id = box.getAttribute("data-ug-photobox");
+    box.onclick = function(e){
+      e.stopPropagation();
+      var u = state.untergruppenEdit.find(function(x){ return x.id === id; });
+      if(u && u.bild_url){
+        openZoom(u.bild_url);
+      } else {
+        box.querySelector('[data-ug-photoinput]').click();
+      }
+    };
+  });
+  wrap.querySelectorAll("[data-ug-photoinput]").forEach(function(input){
+    input.onclick = function(e){ e.stopPropagation(); };
+    input.onchange = function(e){
+      onUgPhotoSelected(input.getAttribute("data-ug-photoinput"), e.target.files[0]);
+    };
+  });
+}
+
+function onUgPhotoSelected(id, file){
+  if(!file) return;
+  var box = document.querySelector('[data-ug-photobox="' + id + '"]');
+  if(box) box.innerHTML = '<div class="icon">⏳</div><div class="hint">Bild wird verarbeitet...</div>';
+  komprimiereBild(file, function(dataUrl){
+    sbPatch("bg_vorlage_untergruppen", "id=eq." + id, {bild_url: dataUrl}).then(function(res){
+      if(!res){ toast("Speichern fehlgeschlagen — Bild evtl. zu groß", "err"); renderUntergruppenListe(); return; }
+      var u = state.untergruppenEdit.find(function(x){ return x.id === id; });
+      if(u) u.bild_url = dataUrl;
+      renderUntergruppenListe();
+      toast("Explosionszeichnung gespeichert", "ok");
+    });
   });
 }
 
