@@ -238,6 +238,7 @@
   .ugPhotoBox .hint{font-size:11px;}
   .ugPhotoBox .icon{font-size:20px;}
   .ugPhotoBox.hasImg{border-style:solid; cursor:zoom-in; min-height:0;}
+  .ugPhotoRemove{position:absolute; top:8px; right:8px; width:28px; height:28px; border-radius:50%; background:rgba(0,0,0,.55); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; cursor:pointer; z-index:2;}
 
   .editModeToggle{display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent); padding:6px 12px; border-radius:20px; background:rgba(14,165,233,.1); border:1px solid rgba(14,165,233,.25);}
 
@@ -2025,7 +2026,7 @@ function renderUntergruppenListe(){
       '<div class="ugBody' + (isOpen ? ' open' : '') + '">' +
         (g.deletable ? (
           '<div class="ugPhotoBox' + (g.bild_url ? ' hasImg' : '') + '" data-ug-photobox="' + g.id + '">' +
-            (g.bild_url ? '<img src="' + g.bild_url + '">' : '<div class="icon">🖼️</div><div class="hint">Explosionszeichnung hinzufügen</div>') +
+            (g.bild_url ? ('<img src="' + g.bild_url + '"><span class="ugPhotoRemove" data-ug-photoremove="' + g.id + '">✕</span>') : '<div class="icon">🖼️</div><div class="hint">Explosionszeichnung hinzufügen</div>') +
             '<input type="file" accept="image/*" style="display:none" data-ug-photoinput="' + g.id + '">' +
           '</div>'
         ) : '') +
@@ -2096,6 +2097,20 @@ function renderUntergruppenListe(){
     input.onclick = function(e){ e.stopPropagation(); };
     input.onchange = function(e){
       onUgPhotoSelected(input.getAttribute("data-ug-photoinput"), e.target.files[0]);
+    };
+  });
+  wrap.querySelectorAll("[data-ug-photoremove]").forEach(function(btn){
+    btn.onclick = function(e){
+      e.stopPropagation();
+      var id = btn.getAttribute("data-ug-photoremove");
+      if(!confirm("Explosionszeichnung entfernen?")) return;
+      sbPatch("bg_vorlage_untergruppen", "id=eq." + id, {bild_url: null}).then(function(res){
+        if(!res){ toast("Entfernen fehlgeschlagen", "err"); return; }
+        var u = state.untergruppenEdit.find(function(x){ return x.id === id; });
+        if(u) u.bild_url = null;
+        renderUntergruppenListe();
+        toast("Explosionszeichnung entfernt", "ok");
+      });
     };
   });
 }
