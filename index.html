@@ -1096,8 +1096,8 @@ function openFahrzeugDetail(id){
   state.aktivesFahrzeug = fz;
   document.getElementById("fzDetailTitle").textContent = fz.modell;
   document.getElementById("fzInfoCard").innerHTML =
-    '<div class="fzMeta" style="margin-bottom:4px;">' + (fz.fahrgestellnr || 'Keine Fahrgestellnummer') + '</div>' +
-    '<div style="font-size:13px; color:var(--text-dim);">' + (fz.kunde || 'Kein Kunde hinterlegt') + '</div>';
+    '<div class="fzMeta" style="margin-bottom:4px;">' + (fz.fahrgestellnr ? escapeHtml(fz.fahrgestellnr) : 'Keine Fahrgestellnummer') + '</div>' +
+    '<div style="font-size:13px; color:var(--text-dim);">' + (fz.kunde ? escapeHtml(fz.kunde) : 'Kein Kunde hinterlegt') + '</div>';
   showView("view-fahrzeugDetail");
   loadBaugruppen(id);
 }
@@ -1704,7 +1704,7 @@ function renderBestellListe(){
       '<div class="fzCard">' +
         '<div class="fzMain">' +
           '<div class="fzTitle">' + escapeHtml(b.bezeichnung || "Bestellauftrag") + '</div>' +
-          '<div class="fzMeta">' + (b.lieferant || 'Kein Lieferant hinterlegt') + '</div>' +
+          '<div class="fzMeta">' + (b.lieferant ? escapeHtml(b.lieferant) : 'Kein Lieferant hinterlegt') + '</div>' +
         '</div>' +
         '<span class="badge ' + (b.status === 'komplett' ? 'abgeschlossen' : 'aktiv') + '">' + b.status + '</span>' +
       '</div>';
@@ -1716,7 +1716,7 @@ function openBestellDetail(b){
   state.aktiveBestellung = b;
   document.getElementById("bestellDetailTitle").textContent = b.bezeichnung || "Bestellauftrag";
   document.getElementById("bestellInfoCard").innerHTML =
-    '<div class="fzMeta">' + (b.lieferant || 'Kein Lieferant hinterlegt') + '</div>' +
+    '<div class="fzMeta">' + (b.lieferant ? escapeHtml(b.lieferant) : 'Kein Lieferant hinterlegt') + '</div>' +
     '<div style="margin-top:6px;"><span class="badge aktiv">' + b.status + '</span></div>';
   showView("view-bestellDetail");
   loadBestellPositionen(b.id);
@@ -1763,7 +1763,7 @@ function bestellungAbschliessen(){
     toast("Bestellauftrag abgeschlossen — Fertigung kann starten", "ok");
     state.aktiveBestellung.status = "komplett";
     document.getElementById("bestellInfoCard").innerHTML =
-      '<div class="fzMeta">' + (state.aktiveBestellung.lieferant || 'Kein Lieferant hinterlegt') + '</div>' +
+      '<div class="fzMeta">' + (state.aktiveBestellung.lieferant ? escapeHtml(state.aktiveBestellung.lieferant) : 'Kein Lieferant hinterlegt') + '</div>' +
       '<div style="margin-top:6px;"><span class="badge abgeschlossen">komplett</span></div>';
   });
 }
